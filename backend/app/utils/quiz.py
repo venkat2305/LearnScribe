@@ -2,6 +2,7 @@ from app.services.youtube import get_video_id, download_youtube_audio
 from app.services.ai.gemini import generate_quiz_from_topic, audio_to_json_gemini
 from app.services.article_extraction import get_article_transcript
 import json
+import os
 
 MODEL = "gemini-2.0-flash"
 
@@ -25,6 +26,7 @@ def generate_quiz(quiz_data) -> dict:
         if not audio_file:
             return {"error": "Failed to download YouTube audio."}
         ai_response_text = audio_to_json_gemini(audio_file, prompt, MODEL, question_count)  # pass question_count
+        os.remove(audio_file)
         source_id = video_id
 
     elif quiz_source == "article":
