@@ -6,6 +6,7 @@ from jose import jwt
 from passlib.context import CryptContext
 from app.db.mongodb import get_database
 from app.config import config
+from bson import ObjectId
 
 
 # JWT settings
@@ -23,6 +24,7 @@ router = APIRouter()
 class User(BaseModel):
     username: str
     email: str
+    user_id: str
 
 
 class UserIn(BaseModel):
@@ -92,10 +94,12 @@ async def register_user(user_in: UserIn):
     try:
         hashed_password = get_password_hash(user_in.password)
         new_user = {
+            "user_id": str(ObjectId()),
             "username": user_in.username,
             "email": user_in.email,
             "hashed_password": hashed_password
         }
+
         await db.users.insert_one(new_user)
         return {
             "username": user_in.username,

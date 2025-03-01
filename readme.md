@@ -1,3 +1,12 @@
+## TO DO
+- for sending audio to gemini, we can send multiple audio files, we input to the function could be list of audio fils and we send all of them. this might help if we have to truncate the audio. 
+- multiple article sources, multiple video sources.
+- refactor so that quiz getter is a function in util/quiz.py and it will generate the quiz with all the conditions.
+- we are using different models and hosting providers, we need to have them all at once for maintainability
+- let's put json structure at a common place to make it reusable
+- swagger login is not working fix it. 
+- after creating quiz of a youtube video, delete the file.
+
 ## learnings
 
 ### config.py
@@ -46,3 +55,14 @@ passlib.context.CryptContext is used for hashing passwords and verifying them.
 - jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM]) decodes the JWT token.
 
 - `deprecated="auto"` automatically updates passwords hashed with older algorithms to newer, more secure ones upon verification. after rehashing a password, you must store the new hash in the database
+
+
+
+AttributeError in Python
+An AttributeError is a common Python exception that occurs when you try to access or modify an attribute that doesn't exist on an object.
+
+Common causes:
+Trying to access a method or property that doesn't exist
+Misspelling an attribute name
+Using a None value and trying to access attributes on it
+Using an object of the wrong type

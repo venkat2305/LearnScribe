@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
-from .routers import auth
+from .routers import auth, quiz, attempt
 
 app = FastAPI(
     title="LearnScribe Backend",
@@ -14,5 +14,11 @@ def health_check():
     return JSONResponse({"status": "OK", "message": "LearnScribe backend is running."})
 
 
-# Include the authentication router
+# Authentication routes
 app.include_router(auth.router, prefix="/auth", tags=["Authentication"])
+
+# Quizzes routes
+app.include_router(quiz.router, prefix="/quiz", tags=["Quizzes"])
+
+# Quiz Attempts routes
+app.include_router(attempt.router, prefix="/attempts", tags=["Quiz Attempts"])

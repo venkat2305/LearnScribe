@@ -10,7 +10,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/token")
 
 
 class User(BaseModel):
-    _id: str
+    user_id: str
     username: str
     email: str
 
@@ -45,7 +45,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
         raise credentials_exception
 
     return User(
-        _id=str(user_doc["_id"]),
+        user_id=str(user_doc["user_id"]),
         username=user_doc["username"],
         email=user_doc["email"],
     )
