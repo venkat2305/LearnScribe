@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
-from .routers import auth, quiz, attempt
+from .routers import auth, quiz
 
 app = FastAPI(
     title="LearnScribe Backend",
@@ -19,6 +19,3 @@ app.include_router(auth.router, prefix="/auth", tags=["Authentication"])
 
 # Quizzes routes
 app.include_router(quiz.router, prefix="/quiz", tags=["Quizzes"])
-
-# Quiz Attempts routes
-app.include_router(attempt.router, prefix="/attempts", tags=["Quiz Attempts"])
