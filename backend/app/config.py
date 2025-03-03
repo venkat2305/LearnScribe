@@ -14,9 +14,11 @@ class Config(BaseSettings):
 
     # AI KEYS
     GOOGLE_GEMINI_KEY: str
+    GROQ_API_KEY: str
 
     # API KEYS
     RAPID_API_KEY: str
+    SUPADATA_API_KEY: str
 
 
 config = Config()

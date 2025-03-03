@@ -74,6 +74,7 @@ async def create_quiz(quiz_data: QuizCreate,
         "created_by": current_user.user_id,
         "created_at": datetime.utcnow(),
         "questions": ai_quiz.get("questions", []),
+        "metadata": result.get("metadata", {}),
     }
 
     db = get_database()
@@ -103,7 +104,7 @@ async def get_all_quizzes(current_user: User = Depends(get_current_user)):
     return {"quizzes": quizzes}
 
 
-@router.get("/attempt/{quiz_id}", status_code=200)
+@router.get("/{quiz_id}", status_code=200)
 async def get_quiz_for_attempt(quiz_id: str, current_user: User = Depends(get_current_user)):
     db = get_database()
     pipeline = [
@@ -119,3 +120,12 @@ async def get_quiz_for_attempt(quiz_id: str, current_user: User = Depends(get_cu
     if not result:
         raise HTTPException(status_code=404, detail="Quiz not found.")
     return result[0]
+
+
+@router.delete("/{quiz_id}", status_code=200)
+async def delete_quiz(quiz_id: str, current_user: User = Depends(get_current_user)):
+    db = get_database()
+    result = await db.quizzes.delete_one({"quiz_id": quiz_id, "created_by": current_user.user_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Quiz not found.")
+    return {"message": "Quiz deleted successfully"}

@@ -61,12 +61,16 @@ def audio_to_json_gemini(audio_file, prompt, model, question_count):
         config=generate_content_config,
     )
 
-    return response.text
+    return {
+        "input_tokens": response.usage_metadata.prompt_token_count,
+        "output_tokens": response.usage_metadata.candidates_token_count,
+        "text": response.text,
+        "model": model,
+    }
 
 
-def generate_quiz_from_text(quiz_prompt):
+def generate_quiz_from_text(quiz_prompt, model):
     client = get_gemini_client()
-    model = "gemini-2.0-flash"
 
     contents = [
         types.Content(
@@ -86,4 +90,10 @@ def generate_quiz_from_text(quiz_prompt):
         contents=contents,
         config=generate_content_config,
     )
-    return response.text
+
+    return {
+        "input_tokens": response.usage_metadata.prompt_token_count,
+        "output_tokens": response.usage_metadata.candidates_token_count,
+        "text": response.text,
+        "model": model,
+    }

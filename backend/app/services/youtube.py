@@ -1,5 +1,26 @@
 import subprocess
 import os
+import requests
+from app.config import config
+
+
+def get_transcript(yt_url: str):
+    endpoint = "https://api.supadata.ai/v1/youtube/transcript"
+    params = {
+        "url": yt_url,
+        "text": "true",
+        "lang": "en"
+    }
+    headers = {
+        "x-api-key": config.SUPADATA_API_KEY
+    }
+
+    response = requests.get(endpoint, params=params, headers=headers)
+    if response.status_code == 200:
+        res = response.json()
+        return res.get("content")
+    else:
+        return None
 
 
 def get_video_id(url: str) -> str:

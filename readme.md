@@ -6,6 +6,14 @@
 - let's put json structure at a common place to make it reusable
 - swagger login is not working fix it. 
 - after creating quiz of a youtube video, delete the file.
+- 307 Temporary Redirect why are we getting this when we make an api call
+- use groq to get responses faster.
+- we would use various models, providers for different things, can we manage all of that in a single place or what? how do we handle this? 
+- probably use openai client for all, im using groq, google-genai clients.
+- at the end, give all the code and compare requirements.txt file, does it has unnecessary packages or not. remove if found.
+- we can build a dynamic system, where in for shorter input token count, we will use groq for faster generation and for larger contexts lets use gemini model. 
+- let's store input tokens, output tokens and the model and the service in metadata, so we can get proper stats on total tokens used for a particular model.
+- when extracting text from a url, we might also need to get the images in that page and feed all the text and the images to ai model to get the response. 
 
 ## learnings
 
