@@ -65,7 +65,7 @@ async def create_quiz(quiz_data: QuizCreate,
             "category": ""
         }
     quiz_doc = {
-        "quiz_id": str(ObjectId()),
+        "quiz_id": ai_quiz.get("quiz_id", str(ObjectId())),
         "quizTitle": ai_quiz.get("quizTitle", "Untitled Quiz"),
         "difficulty": quiz_data.difficulty,
         "category": ai_quiz.get("category", ""),

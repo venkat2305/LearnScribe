@@ -64,60 +64,9 @@ def audio_to_json_gemini(audio_file, prompt, model, question_count):
     return response.text
 
 
-def generate_quiz_from_topic(quiz_topic: str = "", prompt: str = "", difficulty=None, question_count: int = 5, transcript: str = None):
+def generate_quiz_from_text(quiz_prompt):
     client = get_gemini_client()
-    model = "gemini-1.5-pro"
-
-    json_structure = """
-    {
-      "quizTitle": "",
-      "difficulty": "",
-      "category": "",
-      "questions": [
-          {
-              "questionId": "",
-              "questionText": "",
-              "choices": [
-                {
-                  "choiceId": 0,
-                  "choiceText": "",
-                  "choiceExplanation": ""
-                }
-              ],
-              "correctChoicesId": 0,
-              "answerExplanation": ""
-            }
-      ]
-    }
-    """
-
-    if transcript:
-        main_text = f"transcript: {transcript}"
-    elif quiz_topic:
-        main_text = f"topic: {quiz_topic}"
-    else:
-        main_text = ""
-    difficulty_text = f"difficulty level: {difficulty}" if difficulty else ""
-
-    quiz_prompt = f"""
-    Generate a quiz as a valid JSON object with exactly the following structure:
-    {json_structure}
-
-    For the quiz:
-    - {main_text}
-    - {difficulty_text}
-    - {prompt}
-    - Add an appropriate quizTitle based on the provided information
-    - Include the specified difficulty
-    - Add a relevant category
-    - Create {question_count} questions with unique questionId values
-    - Each question should have 4 choices with choiceId
-    - For each choice, provide an explanation of why it's correct or incorrect in choiceExplanation
-    - Specify the correctChoicesId as the index of the correct answer (0, 1, 2, or 3)
-    - Provide a detailed answerExplanation for each question
-
-    The output should be ONLY the JSON object with no additional text.
-    """
+    model = "gemini-2.0-flash"
 
     contents = [
         types.Content(
