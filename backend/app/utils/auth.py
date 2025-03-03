@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from app.db.mongodb import get_database
 from app.config import config
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/token")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
 
 class User(BaseModel):
