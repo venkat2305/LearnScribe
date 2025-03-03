@@ -14,6 +14,7 @@
 - we can build a dynamic system, where in for shorter input token count, we will use groq for faster generation and for larger contexts lets use gemini model. 
 - let's store input tokens, output tokens and the model and the service in metadata, so we can get proper stats on total tokens used for a particular model.
 - when extracting text from a url, we might also need to get the images in that page and feed all the text and the images to ai model to get the response. 
+- we probably need to handle response formats, like application/json or markdown or text. for quiz, we need application/json, for summary, we would need to store markdown.
 
 ## learnings
 
@@ -59,6 +60,19 @@ If command: is set in docker-compose.yml, it takes priority.
 - FastAPI uses OAuth2PasswordBearer to extract the token from the Authorization header. It is typically used for Bearer token authentication.
 passlib.context.CryptContext is used for hashing passwords and verifying them.
 - The code makes use of asynchronous database calls (await db.users.find_one) to ensure non-blocking interactions with the database. This helps improve the performance of the application when dealing with I/O-bound tasks.
+- The OAuth2PasswordBearer is a dependency that expects an endpoint (tokenUrl) where it will send credentials to get an access token.
+- This means that when FastAPI's Swagger UI (or any client) tried to authenticate, it made a POST request to /auth/token to get a token.
+How This Works in Swagger UI
+When you try to log in using Swagger UI’s "Authorize" button:
+1. Swagger UI sends a POST request to the tokenUrl (previously wrong, now corrected).
+2. It includes form data (username and password).
+3. Your login function processes the credentials and returns an access token.
+4. Swagger UI uses the returned token for subsequent API requests.
+- Ensure tokenUrl in OAuth2PasswordBearer matches the actual login endpoint.
+- OAuth2PasswordBearer only defines where credentials should be sent—it doesn't handle authentication logic itself.
+- 
+
+
 
 - jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM]) decodes the JWT token.
 
