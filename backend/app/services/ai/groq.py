@@ -21,14 +21,16 @@ def generate_quiz_from_text_groq(quiz_prompt, model):
         model=model,
         temperature=0.6,
         stream=False,
-        response_format={"type": "json_object"},
+        # response_format={"type": "json_object"},
         stop=None,
         top_p=0.8,
     )
+    choice = chat_completion.choices[0]
+    message = choice.message
 
     return {
-        "text": chat_completion.messages[0].content,
+        "text": message.content,
         "model": model,
-        "input_tokens": chat_completion.messages[0].input_tokens or 0,
-        "output_tokens": chat_completion.messages[0].output_tokens or 0,
+        "input_tokens": getattr(message, "input_tokens", 0),
+        "output_tokens": getattr(message, "output_tokens", 0),
     }
