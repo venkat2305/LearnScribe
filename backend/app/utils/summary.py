@@ -121,11 +121,8 @@ def generate_summary(summary_data) -> dict:
     if "error" in result:
         return result
 
-    # Add a unique ID to the summary
-    summary_id = str(ObjectId())
-
     return {
-        "summary_id": summary_id,
+        "summary_id": str(ObjectId()),
         "summary": result.get("summary", ""),
         "source_type": result.get("source_type", ""),
         "source_id": result.get("source_id", ""),

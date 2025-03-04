@@ -15,6 +15,14 @@
 - let's store input tokens, output tokens and the model and the service in metadata, so we can get proper stats on total tokens used for a particular model.
 - when extracting text from a url, we might also need to get the images in that page and feed all the text and the images to ai model to get the response. 
 - we probably need to handle response formats, like application/json or markdown or text. for quiz, we need application/json, for summary, we would need to store markdown.
+- lets configure the ai functions in such a way that, we can chat with youtbe/article/text or summarize with various templates or generate quizzes. 
+- for summary, TLDR. lets get various templates.
+- subject wise summaries/quiz grouping
+- handwritten notes to text notes. 
+- lets store youtube transcripts, article transcripts, 
+- for quiz answer explanations, we have to give explanations for say if two choices may appear correct to the user but one of them is wrong, we have to give that explanation to that user. 
+
+
 
 ## learnings
 

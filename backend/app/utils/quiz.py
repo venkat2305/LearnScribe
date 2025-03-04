@@ -10,7 +10,8 @@ import time
 
 GEMINI_FLASH_MODEL = "gemini-2.0-flash"
 GEMINI_1_5_PRO_MODEL = "gemini-1.5-pro"
-LLAMA_3_3="llama-3.3-70b-versatile"
+LLAMA_3_3 = "llama-3.3-70b-versatile"
+GROQ_LLAMA_3_1_8B = "llama-3.1-8b-instant"
 
 
 def generate_quiz_prompt(quiz_topic: str = "", prompt: str = "", difficulty=None, question_count: int = 5, transcript: str = None) -> str:
@@ -179,7 +180,6 @@ def generate_quiz(quiz_data) -> dict:
 
     try:
         quiz = json.loads(ai_response_text)
-        print(quiz)
         quiz = add_ids_to_quiz(quiz)
     except Exception:
         return {"error": "AI generation failed."}
