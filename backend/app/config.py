@@ -10,7 +10,8 @@ class Config(BaseSettings):
     # JWT settings
     SECRET_KEY: str
     ALGORITHM: str
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 600
+    ACCESS_TOKEN_EXPIRE_MINUTES: int
+    REFRESH_TOKEN_EXPIRE_DAYS: int
 
     # AI KEYS
     GOOGLE_GEMINI_KEY: str

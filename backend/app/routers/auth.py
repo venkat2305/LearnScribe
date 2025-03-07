@@ -1,8 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Response, Request
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from pydantic import BaseModel
 from datetime import datetime, timedelta, timezone
-from jose import jwt
+from jose import jwt, JWTError
 from passlib.context import CryptContext
 from app.db.mongodb import get_database
 from app.config import config
@@ -13,6 +13,7 @@ from bson import ObjectId
 SECRET_KEY = config.SECRET_KEY
 ALGORITHM = config.ALGORITHM
 ACCESS_TOKEN_EXPIRE_MINUTES = config.ACCESS_TOKEN_EXPIRE_MINUTES
+REFRESH_TOKEN_EXPIRE_DAYS = config.REFRESH_TOKEN_EXPIRE_DAYS
 
 # OAuth2 scheme
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/token")
@@ -64,8 +65,13 @@ async def authenticate_user(db, email: str, password: str):
     return user
 
 
+def create_token(email: str, expires_delta: timedelta):
+    expire = datetime.now(timezone.utc) + expires_delta
+    return jwt.encode({"email": email, "expiry": expire.isoformat()}, SECRET_KEY, algorithm=ALGORITHM)
+
+
 @router.post("/login")
-async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
+async def login_for_access_token(response: Response, form_data: OAuth2PasswordRequestForm = Depends()):
     db = get_database()
     user = await authenticate_user(db, form_data.username, form_data.password)
 
@@ -76,13 +82,40 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = jwt.encode(
-        {"email": user["email"], "expiry": expire.isoformat()},
-        SECRET_KEY,
-        algorithm=ALGORITHM)
-
+    access_token = create_token(user["email"], timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
+    refresh_token = create_token(user["email"], timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS))
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        max_age=REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
+        secure=True,
+        samesite="strict"
+    )
     return {"access_token": access_token, "token_type": "bearer"}
+
+
+@router.post("/refresh-token")
+async def refresh_token(response: Response, request: Request):
+    refresh_token = request.cookies.get("refresh_token")
+    if not refresh_token:
+        raise HTTPException(status_code=401, detail="No refresh token found")
+    try:
+        payload = jwt.decode(refresh_token, SECRET_KEY, algorithms=[ALGORITHM])
+        exp_iso = payload.get("expiry")
+        if datetime.now(timezone.utc) > datetime.fromisoformat(exp_iso):
+            raise HTTPException(status_code=401, detail="Refresh token expired")
+        email = payload.get("email")
+        new_access_token = create_token(email, timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
+        return {"access_token": new_access_token, "token_type": "bearer"}
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Invalid refresh token")
+
+
+@router.post("/logout")
+async def logout(response: Response):
+    response.delete_cookie("refresh_token")
+    return {"message": "Logged out successfully"}
 
 
 @router.post("/register")
