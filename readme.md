@@ -2,7 +2,7 @@
 High
 - 307 Temporary Redirect why are we getting this when we make an api call
 - for manual quiz generation we can use groq.
-
+- setup backend url in frontend properly, for local and prod.
 
 Medium
 - we are using different models and hosting providers, we need to have them all at one place for easier maintainability
