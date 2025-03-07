@@ -76,11 +76,12 @@ def add_ids_to_quiz(quiz: dict) -> dict:
     Updates the quiz object in place and returns it
     """
     # Add quiz ID
-    quiz["quizId"] = str(ObjectId())
+    quiz_id = str(ObjectId())
+    quiz["quizId"] = quiz_id
 
     # Update questions and choices
     for q_idx, question in enumerate(quiz["questions"]):
-        question_id = str(ObjectId())
+        question_id = f"{quiz_id}-{q_idx+1}"
         question["questionId"] = question_id
 
         # Store old correct choice ID before updating choice IDs
@@ -88,11 +89,12 @@ def add_ids_to_quiz(quiz: dict) -> dict:
 
         # Update choice IDs and track the correct one
         for c_idx, choice in enumerate(question["choices"]):
+            choice_id = f"{question_id}-{c_idx+1}"
+            # Update correctChoiceId if this was the correct choice
             if choice.get("choiceId") == old_correct_id:
                 question["correctChoiceId"] = choice_id
-            choice_id = str(ObjectId())
+            # update choice id for each choice.
             choice["choiceId"] = choice_id
-            # Update correctChoiceId if this was the correct choice
 
     return quiz
 
@@ -166,7 +168,7 @@ def generate_quiz(quiz_data) -> dict:
         if not quiz_topic:
             return {"error": "Quiz topic mandatory for manual quiz."}
         quiz_prompt = generate_quiz_prompt(quiz_topic, prompt, difficulty, question_count, "")
-        ai_response = generate_quiz_from_text(quiz_prompt, GEMINI_FLASH_MODEL)
+        ai_response = generate_quiz_from_text_groq(quiz_prompt, GROQ_LLAMA_3_1_8B)
         ai_response_text = ai_response.get('text', '')
         metadata = {
             "model": ai_response.get('model', ""),
