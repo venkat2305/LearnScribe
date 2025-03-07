@@ -10,7 +10,7 @@ import time
 
 GEMINI_FLASH_MODEL = "gemini-2.0-flash"
 GEMINI_1_5_PRO_MODEL = "gemini-1.5-pro"
-LLAMA_3_3 = "llama-3.3-70b-versatile"
+GROQ_LLAMA_3_3 = "llama-3.3-70b-versatile"
 GROQ_LLAMA_3_1_8B = "llama-3.1-8b-instant"
 
 

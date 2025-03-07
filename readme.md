@@ -1,34 +1,63 @@
 ## TO DO
-- for sending audio to gemini, we can send multiple audio files, we input to the function could be list of audio fils and we send all of them. this might help if we have to truncate the audio. 
-- multiple article sources, multiple video sources.
-- refactor so that quiz getter is a function in util/quiz.py and it will generate the quiz with all the conditions.
+High
+- 307 Temporary Redirect why are we getting this when we make an api call
+- for manual quiz generation we can use groq.
+
+
+Medium
 - we are using different models and hosting providers, we need to have them all at one place for easier maintainability
 - let's put json structure at a common place to make it reusable
+- lets store youtube transcripts, article transcripts
+- google signin
+- talk to youtube vid, article and store that conversation thread.
+- for summary, TLDR. lets get various templates.
+- different providers, different model id's, different functions, we have to handle all of these. 
+
+Low
+
+Done
+- store refresh token in http cookie and token in session storage.
 - after creating quiz of a youtube video, delete the file.
-- 307 Temporary Redirect why are we getting this when we make an api call
+
+
+All
+- for sending audio to gemini, we can send multiple audio files, we input to the function could be list of audio files and we send all of them. this might help if we have to truncate the audio. 
+- multiple article sources, multiple video sources.
+- refactor so that quiz getter is a function in util/quiz.py and it will generate the quiz with all the conditions.
+
+
+
 - probably use openai client for all, im using groq, google-genai clients.
 - at the end, give all the code and compare requirements.txt file, does it has unnecessary packages or not. remove if found.
 - we can build a dynamic system, where in for shorter input token count, we will use groq for faster generation and for larger contexts lets use gemini model.
-- for manual quiz generation we can use groq.
+
 - when extracting text from a url, we might also need to get the images in that page and feed all the text and the images to ai model to get the response. 
 - we probably need to handle response formats, like application/json or markdown or text. for quiz, we need application/json, for summary, we would need to store markdown.
 - lets configure the ai functions in such a way that, we can chat with youtbe/article/text or summarize with various templates or generate quizzes. 
-- for summary, TLDR. lets get various templates.
+
 - subject wise summaries/quiz grouping. folders
 - handwritten notes to text structured notes.
-- lets store youtube transcripts, article transcripts, 
+
 - for quiz answer explanations, we have to give explanations for say if two choices may appear correct to the user but one of them is wrong, we have to give that explanation to that user.
 - handle secure authentication flow
-- google signin 
-- store refresh token in http cookie and token in session storage.
+
+
 - PDF/Document Scanner – Extract text from PDFs/images using OCR (Tesseract).
 - definitely upload images/pdfs to R2 object storage.
 - Reads long articles and extracts key insights.
 - Lets users organize and tag notes for later use.
 - we can have an account page, where we will have something about the user info like mbbs student etc to get relevant answers. maybe
 - notion integration.
-- talk to youtube vid, article and store that conversation thread.
 
+- put the schmea of differnt things in a seperate folders etc and use them everywhere instead of putting them in each route file and util file etc. 
+
+
+
+
+### cookie delete on logout
+- The server sends a Set-Cookie header with the same cookie name but with an expired date after successful logout.
+- The browser sees the cookie has expired and automatically deletes it.
+- Since the cookie is deleted, it won’t be sent in future requests.
 
 
 ## learnings
@@ -103,3 +132,19 @@ Trying to access a method or property that doesn't exist
 Misspelling an attribute name
 Using a None value and trying to access attributes on it
 Using an object of the wrong type
+
+
+- In FastAPI, response.delete_cookie() is used to remove a cookie from the client's browser.
+How it Works:
+It sets the cookie's expiration time to the past.
+The browser will then delete the cookie.
+The cookie must match the domain and path where it was set.
+
+What happens?
+The "session_id" cookie is removed from the client.
+The user may need to log in again.
+
+FastAPI endpoint standard convetion.
+- when you send a POST request to /quiz (without a trailing slash), FastAPI is configured to automatically redirect that request to /quiz/ (with a trailing slash). 
+- Trailing slashes are a common convention for directories or collections of resources on the web. FastAPI encourages this for API consistency.
+- SEO (Potentially): In some cases, search engines treat URLs with and without trailing slashes as different URLs. Using trailing slashes consistently can help avoid potential SEO issues (though this is less relevant for APIs).
