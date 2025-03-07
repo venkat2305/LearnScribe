@@ -2,25 +2,32 @@
 - for sending audio to gemini, we can send multiple audio files, we input to the function could be list of audio fils and we send all of them. this might help if we have to truncate the audio. 
 - multiple article sources, multiple video sources.
 - refactor so that quiz getter is a function in util/quiz.py and it will generate the quiz with all the conditions.
-- we are using different models and hosting providers, we need to have them all at once for maintainability
+- we are using different models and hosting providers, we need to have them all at one place for easier maintainability
 - let's put json structure at a common place to make it reusable
-- swagger login is not working fix it. 
 - after creating quiz of a youtube video, delete the file.
 - 307 Temporary Redirect why are we getting this when we make an api call
-- use groq to get responses faster.
-- we would use various models, providers for different things, can we manage all of that in a single place or what? how do we handle this? 
 - probably use openai client for all, im using groq, google-genai clients.
 - at the end, give all the code and compare requirements.txt file, does it has unnecessary packages or not. remove if found.
-- we can build a dynamic system, where in for shorter input token count, we will use groq for faster generation and for larger contexts lets use gemini model. 
-- let's store input tokens, output tokens and the model and the service in metadata, so we can get proper stats on total tokens used for a particular model.
+- we can build a dynamic system, where in for shorter input token count, we will use groq for faster generation and for larger contexts lets use gemini model.
+- for manual quiz generation we can use groq.
 - when extracting text from a url, we might also need to get the images in that page and feed all the text and the images to ai model to get the response. 
 - we probably need to handle response formats, like application/json or markdown or text. for quiz, we need application/json, for summary, we would need to store markdown.
 - lets configure the ai functions in such a way that, we can chat with youtbe/article/text or summarize with various templates or generate quizzes. 
 - for summary, TLDR. lets get various templates.
-- subject wise summaries/quiz grouping
-- handwritten notes to text notes. 
+- subject wise summaries/quiz grouping. folders
+- handwritten notes to text structured notes.
 - lets store youtube transcripts, article transcripts, 
-- for quiz answer explanations, we have to give explanations for say if two choices may appear correct to the user but one of them is wrong, we have to give that explanation to that user. 
+- for quiz answer explanations, we have to give explanations for say if two choices may appear correct to the user but one of them is wrong, we have to give that explanation to that user.
+- handle secure authentication flow
+- google signin 
+- store refresh token in http cookie and token in session storage.
+- PDF/Document Scanner – Extract text from PDFs/images using OCR (Tesseract).
+- definitely upload images/pdfs to R2 object storage.
+- Reads long articles and extracts key insights.
+- Lets users organize and tag notes for later use.
+- we can have an account page, where we will have something about the user info like mbbs student etc to get relevant answers. maybe
+- notion integration.
+- talk to youtube vid, article and store that conversation thread.
 
 
 
