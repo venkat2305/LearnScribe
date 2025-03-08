@@ -28,9 +28,10 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
     try:
         payload = jwt.decode(token, config.SECRET_KEY, algorithms=[config.ALGORITHM])
         email: str = payload.get("email")
-        exp_iso_string: float = payload.get("expiry")
+        user_id: str = payload.get("user_id")
+        exp_iso_string = payload.get("expiry")
 
-        if email is None or exp_iso_string is None:
+        if email is None or user_id is None or exp_iso_string is None:
             raise credentials_exception
         # Check token expiration
         exp_datetime = datetime.fromisoformat(exp_iso_string)
@@ -40,12 +41,11 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
         raise credentials_exception
 
     db = get_database()
-    user_doc = await db.users.find_one({"email": email})
+    user_doc = await db.users.find_one({"user_id": user_id})
     if not user_doc:
         raise credentials_exception
 
     return User(
         user_id=str(user_doc["user_id"]),
         username=user_doc["username"],
-        email=user_doc["email"],
-    )
+        email=user_doc["email"])

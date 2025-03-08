@@ -65,9 +65,13 @@ async def authenticate_user(db, email: str, password: str):
     return user
 
 
-def create_token(email: str, expires_delta: timedelta):
+def create_token(email: str, user_id: str, expires_delta: timedelta):
     expire = datetime.now(timezone.utc) + expires_delta
-    return jwt.encode({"email": email, "expiry": expire.isoformat()}, SECRET_KEY, algorithm=ALGORITHM)
+    return jwt.encode({
+        "email": email,
+        "user_id": user_id,
+        "expiry": expire.isoformat()
+    }, SECRET_KEY, algorithm=ALGORITHM)
 
 
 @router.post("/login")
@@ -82,8 +86,8 @@ async def login_for_access_token(response: Response, form_data: OAuth2PasswordRe
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    access_token = create_token(user["email"], timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
-    refresh_token = create_token(user["email"], timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS))
+    access_token = create_token(user["email"], user["user_id"], timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
+    refresh_token = create_token(user["email"], user["user_id"], timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS))
     response.set_cookie(
         key="refresh_token",
         value=refresh_token,
@@ -106,7 +110,8 @@ async def refresh_token(response: Response, request: Request):
         if datetime.now(timezone.utc) > datetime.fromisoformat(exp_iso):
             raise HTTPException(status_code=401, detail="Refresh token expired")
         email = payload.get("email")
-        new_access_token = create_token(email, timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
+        user_id = payload.get("user_id")
+        new_access_token = create_token(email, user_id, timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
         return {"access_token": new_access_token, "token_type": "bearer"}
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid refresh token")
