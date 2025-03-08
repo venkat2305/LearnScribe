@@ -7,6 +7,7 @@ from bson import ObjectId
 from app.db.mongodb import get_database
 from app.utils.auth import get_current_user, User
 from app.utils.quiz import generate_quiz
+import random
 
 router = APIRouter()
 
@@ -151,16 +152,25 @@ async def get_quiz_for_attempt(quiz_id: str, current_user: User = Depends(get_cu
         {"$match": {"quiz_id": quiz_id}},
         {"$project": {
             "_id": 0,
-            "questions.correct_choice_id": 0,        # renamed
-            "questions.answer_explanation": 0,         # renamed
-            "questions.choices.choice_explanation": 0, # renamed
+            "questions.correct_choice_id": 0,
+            "questions.answer_explanation": 0,
+            "questions.choices.choice_explanation": 0,
             "metadata": 0
         }}
     ]
     result = await db.quizzes.aggregate(pipeline).to_list(length=1)
     if not result:
         raise HTTPException(status_code=404, detail="Quiz not found.")
-    return result[0]
+    quiz = result[0]
+
+    # Randomize choices order for each question and then randomize question order
+    if "questions" in quiz:
+        for question in quiz["questions"]:
+            if "choices" in question and isinstance(question["choices"], list):
+                random.shuffle(question["choices"])
+        random.shuffle(quiz["questions"])
+
+    return quiz
 
 
 @router.delete("/{quiz_id}", status_code=200)
@@ -184,13 +194,13 @@ def process_quiz_responses(quiz, responses):
         question_id = response.get("question_id")
         selected_choice_id = response.get("selected_choice_id")
         question = question_map.get(question_id)
-        
+
         if not question or not selected_choice_id:
             continue
 
         correct_choice_id = question.get("correct_choice_id")  # renamed key
         is_correct = selected_choice_id == correct_choice_id
-        
+
         if is_correct:
             correct_count += 1
         else:
@@ -230,7 +240,7 @@ async def create_quiz_attempt(
     current_user: User = Depends(get_current_user)
 ):
     db = get_database()
-    
+
     quiz = await db.quizzes.find_one({"quiz_id": data.quiz_id})
     if not quiz:
         raise HTTPException(status_code=404, detail="Quiz not found")
@@ -263,7 +273,7 @@ async def create_quiz_attempt(
         "attempted_at": datetime.utcnow()
     }
 
-    result = await db.quiz_attempts.insert_one(attempt_doc)
+    await db.quiz_attempts.insert_one(attempt_doc)
     return {
         "quiz_id": data.quiz_id,
         "attempt_id": attempt_id,
