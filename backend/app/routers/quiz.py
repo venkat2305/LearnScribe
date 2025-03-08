@@ -124,7 +124,8 @@ async def get_quiz_for_attempt(quiz_id: str, current_user: User = Depends(get_cu
             "_id": 0,
             "questions.correctChoicesId": 0,
             "questions.answerExplanation": 0,
-            "questions.choices.choiceExplanation": 0
+            "questions.choices.choiceExplanation": 0,
+            "metadata": 0
         }}
     ]
     result = await db.quizzes.aggregate(pipeline).to_list(length=1)
@@ -142,40 +143,71 @@ async def delete_quiz(quiz_id: str, current_user: User = Depends(get_current_use
     return {"message": "Quiz deleted successfully"}
 
 
-@router.post("/attempt", summary="Attempt a quiz and get results")
-async def create_quiz_attempt(data: QuizAttemptCreate, current_user: User = Depends(get_current_user)):
+@router.post("/attempt", summary="Attempt a quiz and get detailed results")
+async def create_quiz_attempt(
+    data: QuizAttemptCreate, 
+    current_user: User = Depends(get_current_user)
+):
     """
-    Validate user answers against quiz correctChoiceId, store attempt info, 
-    and return stats (correct_count, wrong_count, etc.)
+    Processes quiz attempts and returns detailed results with explanations.
+    Includes full question data with choices and explanations.
     """
     db = get_database()
+    
+    # Fetch the complete quiz document
     quiz = await db.quizzes.find_one({"quiz_id": data.quiz_id})
     if not quiz:
         raise HTTPException(status_code=404, detail="Quiz not found.")
 
-    # Validate that user can attempt the quiz (for example, if only owner can do so, or all users can)
-    # For now, allow any authenticated user to attempt.
+    # Create question ID to question mapping
+    question_map = {q["questionId"]: q for q in quiz["questions"]}
+    total_questions = len(quiz["questions"])
+    questions_result = []
     correct_count = 0
-    wrong_count = 0
     wrong_question_ids = []
 
-    # Map questionId → correctChoiceId for quick lookup
-    question_map = {q["questionId"]: q["correctChoiceId"] for q in quiz["questions"]}
-
+    # Process each user response
     for response in data.responses:
         question_id = response.question_id
         selected_choice_id = response.selected_choice_id
-        correct_choice_id = question_map.get(question_id)
+        question = question_map.get(question_id)
+        
+        if not question:
+            continue  # Skip invalid/missing questions
 
-        if correct_choice_id == selected_choice_id:
+        # Calculate correctness
+        correct_choice_id = question["correctChoiceId"]
+        is_correct = selected_choice_id == correct_choice_id
+        
+        # Update counts
+        if is_correct:
             correct_count += 1
         else:
-            wrong_count += 1
             wrong_question_ids.append(question_id)
 
-    # Store attempt info in 'quiz_attempts' or 'quizAttempts'
-    total_marks = len(quiz["questions"])
+        # Build question result with full choice data
+        questions_result.append({
+            "question_id": question_id,
+            "questionText": question["questionText"],
+            "selected_choice_id": selected_choice_id,
+            "correct_choice_id": correct_choice_id,
+            "answerExplanation": question.get("answerExplanation", ""),
+            "choices": [
+                {
+                    "choiceId": choice["choiceId"],
+                    "choiceText": choice["choiceText"],
+                    "choiceExplanation": choice["choiceExplanation"]
+                }
+                for choice in question["choices"]
+            ]
+        })
+
+    # Calculate final metrics
+    wrong_count = total_questions - correct_count
     marks_obtained = correct_count
+    total_marks = total_questions
+
+    # Store attempt record
     attempt_doc = {
         "userId": current_user.user_id,
         "quizId": data.quiz_id,
@@ -183,7 +215,7 @@ async def create_quiz_attempt(data: QuizAttemptCreate, current_user: User = Depe
             {
                 "question_id": r.question_id,
                 "selected_choice_id": r.selected_choice_id,
-                "is_correct": (question_map.get(r.question_id) == r.selected_choice_id)
+                "is_correct": (question_map[r.question_id]["correctChoiceId"] == r.selected_choice_id)
             }
             for r in data.responses
         ],
@@ -197,6 +229,7 @@ async def create_quiz_attempt(data: QuizAttemptCreate, current_user: User = Depe
         "attempted_at": datetime.utcnow()
     }
 
+    # Insert attempt record
     result = await db.quiz_attempts.insert_one(attempt_doc)
     if not result.inserted_id:
         raise HTTPException(status_code=500, detail="Failed to store quiz attempt.")
@@ -205,14 +238,14 @@ async def create_quiz_attempt(data: QuizAttemptCreate, current_user: User = Depe
         "quiz_id": data.quiz_id,
         "correct_count": correct_count,
         "wrong_count": wrong_count,
-        "total_questions": correct_count + wrong_count,
-        "wrong_questions": wrong_question_ids,
+        "total_questions": total_questions,
+        "wrong_question_ids": wrong_question_ids,
         "marks_obtained": marks_obtained,
-        "total_marks": total_marks
+        "total_marks": total_marks,
+        "questions": questions_result
     }
 
 
-# New endpoint to get attempt history for a quiz
 @router.get("/{quiz_id}/attempts", status_code=200)
 async def get_quiz_attempts(quiz_id: str, current_user: User = Depends(get_current_user)):
     """
@@ -229,5 +262,5 @@ async def get_quiz_attempts(quiz_id: str, current_user: User = Depends(get_curre
             "attempted_at": 1
         }
     ).to_list(length=None)
-    
+
     return {"attempts": attempts}
