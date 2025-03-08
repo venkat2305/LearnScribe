@@ -27,6 +27,7 @@ Medium
 - talk to youtube vid, article and store that conversation thread.
 - for summary, TLDR. lets get various templates.
 - different providers, different model id's, different functions, we have to handle all of these. 
+- re-enable ts checking package.json : // "build": "tsc -b && vite build",
 
 Low
 
