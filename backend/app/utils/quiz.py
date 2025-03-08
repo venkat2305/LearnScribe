@@ -99,6 +99,15 @@ def add_ids_to_quiz(quiz: dict) -> dict:
     return quiz
 
 
+def clean_ai_response(text: str) -> str:
+    # Remove markdown code fences if present
+    if text.strip().startswith("```"):
+        lines = text.splitlines()
+        if len(lines) >= 2 and lines[0].strip().startswith("```") and lines[-1].strip().startswith("```"):
+            text = "\n".join(lines[1:-1])
+    return text
+
+
 def generate_quiz_from_audio(source_url, prompt, question_count):
     video_id = get_video_id(source_url)
     audio_file = download_youtube_audio(source_url)
@@ -181,7 +190,8 @@ def generate_quiz(quiz_data) -> dict:
         return {"error": "Invalid quiz source provided."}
 
     try:
-        quiz = json.loads(ai_response_text)
+        cleaned_text = clean_ai_response(ai_response_text)
+        quiz = json.loads(cleaned_text)
         quiz = add_ids_to_quiz(quiz)
     except Exception:
         return {"error": "AI generation failed."}
