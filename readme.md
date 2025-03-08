@@ -169,3 +169,18 @@ FastAPI endpoint standard convetion.
 - when you send a POST request to /quiz (without a trailing slash), FastAPI is configured to automatically redirect that request to /quiz/ (with a trailing slash). 
 - Trailing slashes are a common convention for directories or collections of resources on the web. FastAPI encourages this for API consistency.
 - SEO (Potentially): In some cases, search engines treat URLs with and without trailing slashes as different URLs. Using trailing slashes consistently can help avoid potential SEO issues (though this is less relevant for APIs).
+
+#### cors error
+The CORS error you're encountering arises because using allow_origins=["*"] with allow_credentials=True is incompatible when credentials (like cookies or authorization headers) are involved
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # or specify your domains
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+Replace the wildcard * with explicit frontend origins in your FastAPI CORS configuration
+The browser blocks requests when allow_origins is ["*"] and credentials are enabled.
+
+Security Restriction: Browsers block wildcard (*) origins with credentials to prevent cross-origin attacks

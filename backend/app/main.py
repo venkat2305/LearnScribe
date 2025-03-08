@@ -11,7 +11,9 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # or specify your domains
+    allow_origins=[
+        "http://localhost:5173",
+        "https://learn-scribe-25.vercel.app/"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
