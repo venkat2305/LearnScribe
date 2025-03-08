@@ -99,9 +99,14 @@ async def create_quiz(quiz_data: QuizCreate,
 @router.get("/myquizzes")
 async def get_all_quizzes(current_user: User = Depends(get_current_user)):
     db = get_database()
+    user_id = current_user.user_id
 
     pipeline = [
         {
+            '$match': {
+                'created_by': user_id
+            }
+        }, {
             '$lookup': {
                 'from': 'quiz_attempts', 
                 'localField': 'quiz_id', 
