@@ -31,17 +31,17 @@ class ContentSource(BaseModel):
 
 
 class QuizCreate(BaseModel):
-    quizSource: QuizSourceEnum
-    quizTopic: Optional[str] = None
+    quiz_source: QuizSourceEnum
+    quiz_topic: Optional[str] = None
     difficulty: DifficultyEnum
-    contentSource: Optional[ContentSource] = None
+    content_source: Optional[ContentSource] = None
     prompt: Optional[str] = None
-    numberOfQuestions: int = 5  # added new field for number of questions
+    number_of_questions: int = 5  # renamed
 
     @root_validator(pre=True)
     def check_content_source(cls, values):
-        quiz_source = values.get("quizSource")
-        content_source = values.get("contentSource")
+        quiz_source = values.get("quiz_source")  # renamed
+        content_source = values.get("content_source")  # renamed
         if quiz_source in {"youtube", "article"}:
             if not (content_source and content_source.get("url")):
                 raise ValueError("ContentSource.url is required for youtube and article quizzes.")
@@ -71,13 +71,13 @@ async def create_quiz(quiz_data: QuizCreate,
     # If ai_quiz is a list, wrap it into a dict
     if isinstance(ai_quiz, list):
         ai_quiz = {
-            "quizTitle": "Untitled Quiz",
+            "quiz_title": "Untitled Quiz",
             "questions": ai_quiz,
             "category": ""
         }
     quiz_doc = {
         "quiz_id": ai_quiz.get("quiz_id", str(ObjectId())),
-        "quizTitle": ai_quiz.get("quizTitle", "Untitled Quiz"),
+        "quiz_title": ai_quiz.get("quiz_title", "Untitled Quiz"),
         "difficulty": quiz_data.difficulty,
         "category": ai_quiz.get("category", ""),
         "quiz_source": result.get("quiz_source"),
@@ -96,21 +96,45 @@ async def create_quiz(quiz_data: QuizCreate,
     return {"message": "Quiz created successfully", "quiz_id": quiz_doc["quiz_id"]}
 
 
-@router.get("/myquizzes", status_code=200)
+@router.get("/myquizzes")
 async def get_all_quizzes(current_user: User = Depends(get_current_user)):
     db = get_database()
-    quizzes = await db.quizzes.find(
-        {"created_by": current_user.user_id}, 
+
+    pipeline = [
         {
-            "_id": 0,  # Exclude _id
-            "quiz_id": 1,
-            "quiz_title": 1,
-            "difficulty": 1,
-            "category": 1,
-            "quiz_source": 1,
-            "created_at": 1
+            '$lookup': {
+                'from': 'quiz_attempts', 
+                'localField': 'quiz_id', 
+                'foreignField': 'quiz_id', 
+                'as': 'attempts'
+            }
+        }, {
+            '$set': {
+                'attempt_count': {
+                    '$size': '$attempts'
+                }, 
+                'questions_count': {
+                    '$size': '$questions'
+                }
+            }
+        }, {
+            '$project': {
+                '_id': 0,
+                'quiz_id': 1, 
+                'quiz_title': 1, 
+                'difficulty': 1, 
+                'category': 1, 
+                'quiz_source': 1, 
+                'source_id': 1, 
+                'created_by': 1, 
+                'created_at': 1, 
+                'attempt_count': 1, 
+                'questions_count': 1
+            }
         }
-    ).to_list(length=None)
+    ]
+
+    quizzes = await db.quizzes.aggregate(pipeline).to_list(length=None)
 
     return {"quizzes": quizzes}
 
@@ -122,9 +146,9 @@ async def get_quiz_for_attempt(quiz_id: str, current_user: User = Depends(get_cu
         {"$match": {"quiz_id": quiz_id}},
         {"$project": {
             "_id": 0,
-            "questions.correctChoicesId": 0,
-            "questions.answerExplanation": 0,
-            "questions.choices.choiceExplanation": 0,
+            "questions.correct_choice_id": 0,        # renamed
+            "questions.answer_explanation": 0,         # renamed
+            "questions.choices.choice_explanation": 0, # renamed
             "metadata": 0
         }}
     ]
@@ -143,123 +167,151 @@ async def delete_quiz(quiz_id: str, current_user: User = Depends(get_current_use
     return {"message": "Quiz deleted successfully"}
 
 
-@router.post("/attempt", summary="Attempt a quiz and get detailed results")
-async def create_quiz_attempt(
-    data: QuizAttemptCreate, 
-    current_user: User = Depends(get_current_user)
-):
-    """
-    Processes quiz attempts and returns detailed results with explanations.
-    Includes full question data with choices and explanations.
-    """
-    db = get_database()
-    
-    # Fetch the complete quiz document
-    quiz = await db.quizzes.find_one({"quiz_id": data.quiz_id})
-    if not quiz:
-        raise HTTPException(status_code=404, detail="Quiz not found.")
-
-    # Create question ID to question mapping
-    question_map = {q["questionId"]: q for q in quiz["questions"]}
-    total_questions = len(quiz["questions"])
+def process_quiz_responses(quiz, responses):
+    """Helper function to process quiz responses and generate results"""
+    question_map = {q["question_id"]: q for q in quiz.get("questions", [])}  # renamed key
+    total_questions = len(quiz.get("questions", []))
     questions_result = []
     correct_count = 0
     wrong_question_ids = []
 
-    # Process each user response
-    for response in data.responses:
-        question_id = response.question_id
-        selected_choice_id = response.selected_choice_id
+    for response in responses:
+        question_id = response.get("question_id")
+        selected_choice_id = response.get("selected_choice_id")
         question = question_map.get(question_id)
         
-        if not question:
-            continue  # Skip invalid/missing questions
+        if not question or not selected_choice_id:
+            continue
 
-        # Calculate correctness
-        correct_choice_id = question["correctChoiceId"]
+        correct_choice_id = question.get("correct_choice_id")  # renamed key
         is_correct = selected_choice_id == correct_choice_id
         
-        # Update counts
         if is_correct:
             correct_count += 1
         else:
             wrong_question_ids.append(question_id)
 
-        # Build question result with full choice data
         questions_result.append({
             "question_id": question_id,
-            "questionText": question["questionText"],
+            "question_text": question.get("question_text", ""),  # renamed key
             "selected_choice_id": selected_choice_id,
             "correct_choice_id": correct_choice_id,
-            "answerExplanation": question.get("answerExplanation", ""),
+            "answer_explanation": question.get("answer_explanation", ""),  # renamed key
             "choices": [
                 {
-                    "choiceId": choice["choiceId"],
-                    "choiceText": choice["choiceText"],
-                    "choiceExplanation": choice["choiceExplanation"]
+                    "choice_id": choice.get("choice_id"),      # renamed
+                    "choice_text": choice.get("choice_text", ""), # renamed
+                    "choice_explanation": choice.get("choice_explanation", "")  # renamed
                 }
-                for choice in question["choices"]
+                for choice in question.get("choices", [])
             ]
         })
 
-    # Calculate final metrics
     wrong_count = total_questions - correct_count
-    marks_obtained = correct_count
-    total_marks = total_questions
+    return {
+        "questions_result": questions_result,
+        "correct_count": correct_count,
+        "wrong_count": wrong_count,
+        "wrong_question_ids": wrong_question_ids,
+        "total_questions": total_questions,
+        "marks_obtained": correct_count,
+        "total_marks": total_questions
+    }
 
-    # Store attempt record
+
+@router.post("/attempt")
+async def create_quiz_attempt(
+    data: QuizAttemptCreate, 
+    current_user: User = Depends(get_current_user)
+):
+    db = get_database()
+    
+    quiz = await db.quizzes.find_one({"quiz_id": data.quiz_id})
+    if not quiz:
+        raise HTTPException(status_code=404, detail="Quiz not found")
+
+    responses = [r.dict() for r in data.responses]
+    processed = process_quiz_responses(quiz, responses)
+    # Build question map for lookup
+    question_map = {q["question_id"]: q for q in quiz.get("questions", [])}  # renamed key
+
+    attempt_id = str(ObjectId())
     attempt_doc = {
-        "userId": current_user.user_id,
-        "quizId": data.quiz_id,
+        "user_id": current_user.user_id,  # renamed key
+        "quiz_id": data.quiz_id,
+        "attempt_id": attempt_id,
         "responses": [
             {
-                "question_id": r.question_id,
-                "selected_choice_id": r.selected_choice_id,
-                "is_correct": (question_map[r.question_id]["correctChoiceId"] == r.selected_choice_id)
+                "question_id": r["question_id"],
+                "selected_choice_id": r["selected_choice_id"],
+                "is_correct": (question_map[r["question_id"]]["correct_choice_id"] == r["selected_choice_id"])  # renamed
             }
-            for r in data.responses
+            for r in responses if r["question_id"] in question_map
         ],
         "stats": {
-            "correct_count": correct_count,
-            "wrong_count": wrong_count,
-            "wrong_question_ids": wrong_question_ids
+            "correct_count": processed["correct_count"],
+            "wrong_count": processed["wrong_count"],
+            "wrong_question_ids": processed["wrong_question_ids"]
         },
-        "marks_obtained": marks_obtained,
-        "total_marks": total_marks,
+        "marks_obtained": processed["marks_obtained"],
+        "total_marks": processed["total_marks"],
         "attempted_at": datetime.utcnow()
     }
 
-    # Insert attempt record
     result = await db.quiz_attempts.insert_one(attempt_doc)
-    if not result.inserted_id:
-        raise HTTPException(status_code=500, detail="Failed to store quiz attempt.")
-
     return {
         "quiz_id": data.quiz_id,
-        "correct_count": correct_count,
-        "wrong_count": wrong_count,
-        "total_questions": total_questions,
-        "wrong_question_ids": wrong_question_ids,
-        "marks_obtained": marks_obtained,
-        "total_marks": total_marks,
-        "questions": questions_result
+        "attempt_id": attempt_id,
+        "attempted_at": attempt_doc["attempted_at"],
+    }
+
+
+@router.get("/attempts/{attempt_id}")
+async def get_quiz_attempt(
+    attempt_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    db = get_database()
+
+    attempt = await db.quiz_attempts.find_one(
+        {"attempt_id": attempt_id, "user_id": current_user.user_id}  # renamed key
+    )
+    if not attempt:
+        raise HTTPException(status_code=404, detail="Attempt not found")
+
+    quiz = await db.quizzes.find_one({"quiz_id": attempt["quiz_id"]})  # renamed key
+    if not quiz:
+        raise HTTPException(status_code=404, detail="Quiz not found")
+
+    processed = process_quiz_responses(quiz, attempt["responses"])
+
+    return {
+        "attempt_id": attempt_id,
+        "quiz_id": attempt["quiz_id"],
+        "attempted_at": attempt["attempted_at"],
+        "stats": {
+            "correct_count": processed["correct_count"],
+            "wrong_count": processed["wrong_count"],
+            "wrong_question_ids": processed["wrong_question_ids"],
+            "marks_obtained": processed["marks_obtained"],
+            "total_marks": processed["total_marks"]
+        },
+        "questions": processed["questions_result"]
     }
 
 
 @router.get("/{quiz_id}/attempts", status_code=200)
 async def get_quiz_attempts(quiz_id: str, current_user: User = Depends(get_current_user)):
-    """
-    Get all attempts for a specific quiz by the current user
-    """
     db = get_database()
     attempts = await db.quiz_attempts.find(
-        {"quizId": quiz_id, "userId": current_user.user_id},
+        {"quiz_id": quiz_id, "user_id": current_user.user_id},  # renamed keys
         {
             "_id": 0,
             "marks_obtained": 1,
-            "total_marks": 1, 
+            "total_marks": 1,
             "stats": 1,
-            "attempted_at": 1
+            "attempted_at": 1,
+            "attempt_id": 1
         }
     ).to_list(length=None)
 

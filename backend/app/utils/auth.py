@@ -32,10 +32,10 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
 
         if email is None or exp_iso_string is None:
             raise credentials_exception
-        # # Check token expiration
-        # exp_datetime = datetime.fromisoformat(exp_iso_string)
-        # if datetime.now(tz=timezone.utc) > exp_datetime:
-        #     raise credentials_exception
+        # Check token expiration
+        exp_datetime = datetime.fromisoformat(exp_iso_string)
+        if datetime.now(tz=timezone.utc) > exp_datetime:
+            raise credentials_exception
     except JWTError:
         raise credentials_exception
 

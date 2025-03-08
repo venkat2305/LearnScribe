@@ -21,7 +21,6 @@ export const authService = {
   },
   
   register: async (data: RegisterRequest): Promise<RegisterResponse> => {
-    console.log(data)
     const response = await axiosInstance.post<RegisterResponse>(
       "/auth/register", 
       data

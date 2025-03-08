@@ -17,23 +17,23 @@ GROQ_LLAMA_3_1_8B = "llama-3.1-8b-instant"
 def generate_quiz_prompt(quiz_topic: str = "", prompt: str = "", difficulty=None, question_count: int = 5, transcript: str = None) -> str:
     json_structure = """
         {
-        "quizTitle": "",
+        "quiz_title": "",
         "difficulty": "",
         "category": "",
         "questions": [
             {
-                "questionId": "",
-                "questionText": "",
+                "question_id": "",
+                "question_text": "",
                 "choices": [
                     {
-                    "choiceId": 0,
-                    "choiceText": "",
-                    "choiceExplanation": ""
+                        "choice_id": 0,
+                        "choice_text": "",
+                        "choice_explanation": ""
                     }
                 ],
-                "correctChoiceId": 0,
-                "answerExplanation": ""
-                }
+                "correct_choice_id": 0,
+                "answer_explanation": ""
+            }
         ]
         }
     """
@@ -77,24 +77,24 @@ def add_ids_to_quiz(quiz: dict) -> dict:
     """
     # Add quiz ID
     quiz_id = str(ObjectId())
-    quiz["quizId"] = quiz_id
+    quiz["quiz_id"] = quiz_id
 
     # Update questions and choices
     for q_idx, question in enumerate(quiz["questions"]):
         question_id = f"{quiz_id}-{q_idx+1}"
-        question["questionId"] = question_id
+        question["question_id"] = question_id
 
         # Store old correct choice ID before updating choice IDs
-        old_correct_id = question["correctChoiceId"]
+        old_correct_id = question["correct_choice_id"]
 
         # Update choice IDs and track the correct one
         for c_idx, choice in enumerate(question["choices"]):
             choice_id = f"{question_id}-{c_idx+1}"
-            # Update correctChoiceId if this was the correct choice
-            if choice.get("choiceId") == old_correct_id:
-                question["correctChoiceId"] = choice_id
+            # Update correct_choice_id if this was the correct choice
+            if choice.get("choice_id") == old_correct_id:
+                question["correct_choice_id"] = choice_id
             # update choice id for each choice.
-            choice["choiceId"] = choice_id
+            choice["choice_id"] = choice_id
 
     return quiz
 
@@ -118,17 +118,17 @@ def generate_quiz_from_audio(source_url, prompt, question_count):
 
 
 def generate_quiz(quiz_data) -> dict:
-    quiz_source = quiz_data.quizSource
-    quiz_topic = quiz_data.quizTopic or ""
+    quiz_source = quiz_data.quiz_source
+    quiz_topic = quiz_data.quiz_topic or ""
     prompt = quiz_data.prompt or ""
-    question_count = quiz_data.numberOfQuestions
-    source_url = quiz_data.contentSource.url if quiz_data.contentSource else ""
+    question_count = quiz_data.number_of_questions
+    source_url = quiz_data.content_source.url if quiz_data.content_source else ""
     difficulty = quiz_data.difficulty
 
     time1 = time.time()
 
-    if hasattr(quiz_data, "contentSource") and quiz_data.contentSource:
-        source_url = quiz_data.contentSource.url or ""
+    if hasattr(quiz_data, "contentSource") and quiz_data.content_source:
+        source_url = quiz_data.content_source.url or ""
 
     if quiz_source == "youtube":
         if not source_url:

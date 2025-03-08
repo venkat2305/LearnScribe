@@ -3,6 +3,21 @@ High
 - 307 Temporary Redirect why are we getting this when we make an api call
 - for manual quiz generation we can use groq.
 - setup backend url in frontend properly, for local and prod.
+- read about redux-toolkit, how does it work. can we have two stores in a single application
+- ngnix.conf for docker
+- edit summary
+- do proper indexing, for date desc index.
+- sidebar more maintainable, like we should make it from an array. 
+- we have to make sure the options are difficult. like, it shouldn't be like odd one out, somewhat similar somewhat tricky.
+- and correct choice should be jumbled in order
+- remove quiz topic for yt. check all fields input, remove unnecessary. 
+- number of questions is wrong in my quizzes page. 
+- handle multiple quiz results for a single quiz if the user attempted multiple times. 
+- add CORS middleware to enable cross-origin requests. needed to send cookies to the server : is this true? 
+- seperate rapid api keys for prod and stage. 
+- change favicon
+- default number of questions, default prompt, etc we can store in settings via redux and store it in users, we can send them with quiz creation request.
+- remove access token from local and put it in memory only. 
 
 Medium
 - we are using different models and hosting providers, we need to have them all at one place for easier maintainability
@@ -50,6 +65,12 @@ All
 - notion integration.
 
 - put the schmea of differnt things in a seperate folders etc and use them everywhere instead of putting them in each route file and util file etc. 
+
+- after everything we can send frontend code to claude to make it responsive
+- why quiz.types.ts
+- is the overall code like a senior or garbage 
+- what is overall architecture of the project, explain project structure, why did you put certain things in hooks, some in utils and some as services.
+-typescript types, is it strict, what is good in the code and where and what can we improve. 
 
 
 
