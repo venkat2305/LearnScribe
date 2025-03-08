@@ -11,7 +11,10 @@ import time
 GEMINI_FLASH_MODEL = "gemini-2.0-flash"
 GEMINI_1_5_PRO_MODEL = "gemini-1.5-pro"
 GROQ_LLAMA_3_3 = "llama-3.3-70b-versatile"
+GROQ_LLAMA_3_3_SPECDEC = "llama-3.3-70b-specdec"
 GROQ_LLAMA_3_1_8B = "llama-3.1-8b-instant"
+GROQ_LLAMA_3_2_8B = "llama-3.2-1b-preview"
+GROQ_QWEN_QWQ_32B = "qwen-qwq-32b"
 
 
 def generate_quiz_prompt(quiz_topic: str = "", prompt: str = "", difficulty=None, question_count: int = 5, transcript: str = None) -> str:
@@ -65,6 +68,7 @@ def generate_quiz_prompt(quiz_topic: str = "", prompt: str = "", difficulty=None
     - All text content must be in English.
 
     The output should be ONLY the JSON object with no additional text.
+    quiz should be a JSON object
     """
 
     return quiz_prompt
@@ -142,7 +146,6 @@ def generate_quiz(quiz_data) -> dict:
     if quiz_source == "youtube":
         if not source_url:
             return {"error": "YouTube URL is required."}
-        # ai_response_text, metadata, source_id = generate_quiz_from_audio(source_url)
         transcript = get_transcript(source_url)
         quiz_prompt = generate_quiz_prompt(quiz_topic, prompt, difficulty,
                                            question_count, transcript)
