@@ -2,19 +2,42 @@ from app.services.youtube import get_video_id, download_youtube_audio, get_trans
 from app.services.ai.gemini import generate_quiz_from_text, audio_to_json_gemini
 from app.services.ai.groq import generate_quiz_from_text_groq
 from app.services.article_extraction import get_article_transcript
+from app.models.ai_models import Services, SourceTypes, SOURCE_TO_MODEL_MAPPING
 import json
 import os
 from bson import ObjectId
 import time
 
+# Service-specific generation functions
+def generate_with_gemini(prompt, model_id):
+    response = generate_quiz_from_text(prompt, model_id)
+    return {
+        "text": response.get('text', ''),
+        "metadata": {
+            "model": response.get('model', ""),
+            "service": Services.GEMINI,
+            "input_tokens": response.get('input_tokens', 0),
+            "output_tokens": response.get('output_tokens', 0),
+        }
+    }
 
-GEMINI_FLASH_MODEL = "gemini-2.0-flash"
-GEMINI_1_5_PRO_MODEL = "gemini-1.5-pro"
-GROQ_LLAMA_3_3 = "llama-3.3-70b-versatile"
-GROQ_LLAMA_3_3_SPECDEC = "llama-3.3-70b-specdec"
-GROQ_LLAMA_3_1_8B = "llama-3.1-8b-instant"
-GROQ_LLAMA_3_2_8B = "llama-3.2-1b-preview"
-GROQ_QWEN_QWQ_32B = "qwen-qwq-32b"
+def generate_with_groq(prompt, model_id):
+    response = generate_quiz_from_text_groq(prompt, model_id)
+    return {
+        "text": response.get('text', ''),
+        "metadata": {
+            "model": response.get('model', ""),
+            "service": Services.GROQ,
+            "input_tokens": response.get('input_tokens', 0),
+            "output_tokens": response.get('output_tokens', 0),
+        }
+    }
+
+
+SERVICE_ROUTER = {
+    Services.GEMINI: generate_with_gemini,
+    Services.GROQ: generate_with_groq,
+}
 
 
 def generate_quiz_prompt(quiz_topic: str = "", prompt: str = "", difficulty=None, question_count: int = 5, transcript: str = None) -> str:
@@ -130,77 +153,74 @@ def generate_quiz_from_audio(source_url, prompt, question_count):
     return ai_response_text, metadata, source_id
 
 
+def get_source_content(quiz_source, source_url):
+    """Get content based on source type"""
+    if quiz_source == SourceTypes.YOUTUBE:
+        return get_transcript(source_url), get_video_id(source_url)
+    elif quiz_source == SourceTypes.ARTICLE:
+        return get_article_transcript(source_url), ""
+    else:
+        return "", ""
+
+
 def generate_quiz(quiz_data) -> dict:
+    # Extract data
     quiz_source = quiz_data.quiz_source
     quiz_topic = quiz_data.quiz_topic or ""
     prompt = quiz_data.prompt or ""
     question_count = quiz_data.number_of_questions
-    source_url = quiz_data.content_source.url if quiz_data.content_source else ""
     difficulty = quiz_data.difficulty
-
+    source_url = quiz_data.content_source.url if hasattr(quiz_data, "content_source") and quiz_data.content_source else ""
+    
     time1 = time.time()
-
-    if hasattr(quiz_data, "contentSource") and quiz_data.content_source:
-        source_url = quiz_data.content_source.url or ""
-
-    if quiz_source == "youtube":
-        if not source_url:
-            return {"error": "YouTube URL is required."}
-        transcript = get_transcript(source_url)
-        quiz_prompt = generate_quiz_prompt(quiz_topic, prompt, difficulty,
-                                           question_count, transcript)
-        ai_response = generate_quiz_from_text(quiz_prompt, GEMINI_FLASH_MODEL)
-        ai_response_text = ai_response.get('text', '')
-        metadata = {
-            "model": ai_response.get('model', ""),
-            "service": "gemini",
-            "input_tokens": ai_response.get('input_tokens', 0),
-            "output_tokens": ai_response.get('output_tokens', 0),
-        }
-        source_id = get_video_id(source_url)
-
-    elif quiz_source == "article":
-        if not source_url:
-            return {"error": "Article URL is required."}
-
-        transcript = get_article_transcript(source_url)
-        quiz_prompt = generate_quiz_prompt(quiz_topic, prompt, difficulty, question_count, transcript)
-        ai_response = generate_quiz_from_text(quiz_prompt, GEMINI_FLASH_MODEL)
-
-        ai_response_text = ai_response.get('text', '')
-        metadata = {
-            "model": ai_response.get('model', ""),
-            "service": "gemini",
-            "input_tokens": ai_response.get('input_tokens', 0),
-            "output_tokens": ai_response.get('output_tokens', 0),
-        }
-        source_id = ""
-
-    elif quiz_source == "manual":
-        if not quiz_topic:
-            return {"error": "Quiz topic mandatory for manual quiz."}
-        quiz_prompt = generate_quiz_prompt(quiz_topic, prompt, difficulty, question_count, "")
-        ai_response = generate_quiz_from_text_groq(quiz_prompt, GROQ_LLAMA_3_1_8B)
-        ai_response_text = ai_response.get('text', '')
-        metadata = {
-            "model": ai_response.get('model', ""),
-            "service": "gemini",
-            "input_tokens": ai_response.get('input_tokens', 0),
-            "output_tokens": ai_response.get('output_tokens', 0),
-        }
-        source_id = ""
-    else:
-        return {"error": "Invalid quiz source provided."}
-
+    
+    # Validate inputs
+    if quiz_source in [SourceTypes.YOUTUBE, SourceTypes.ARTICLE] and not source_url:
+        return {"error": f"{quiz_source.capitalize()} URL is required."}
+    
+    if quiz_source == SourceTypes.MANUAL and not quiz_topic:
+        return {"error": "Quiz topic mandatory for manual quiz."}
+    
+    # Get source content and ID
+    content, source_id = get_source_content(quiz_source, source_url)
+    
+    # Get the service-model pair for this source type
+    model_pair = SOURCE_TO_MODEL_MAPPING.get(quiz_source, SOURCE_TO_MODEL_MAPPING["default"])
+    service_name = model_pair.service
+    model_id = model_pair.model_id
+    
+    # Generate quiz prompt
+    quiz_prompt = generate_quiz_prompt(
+        quiz_topic, 
+        prompt, 
+        difficulty, 
+        question_count,
+        content if quiz_source != SourceTypes.MANUAL else ""
+    )
+    
+    # Route to appropriate service
+    generator_func = SERVICE_ROUTER.get(service_name)
+    if not generator_func:
+        return {"error": f"Unsupported service: {service_name}"}
+    
+    ai_response = generator_func(quiz_prompt, model_id)
+    ai_response_text = ai_response["text"]
+    metadata = ai_response["metadata"]
+    
+    # Process response
     try:
         cleaned_text = clean_ai_response(ai_response_text)
         quiz = json.loads(cleaned_text)
         quiz = add_ids_to_quiz(quiz)
-    except Exception:
-        return {"error": "AI generation failed."}
-
+    except Exception as e:
+        return {"error": f"AI generation failed: {str(e)}"}
+    
     time2 = time.time()
     metadata["time_taken"] = time2 - time1
+    metadata["model_id"] = model_id
+    metadata["service"] = service_name
+    metadata["model_description"] = model_pair.description
+    
     return {
         "quiz": quiz,
         "quiz_source": quiz_source,
