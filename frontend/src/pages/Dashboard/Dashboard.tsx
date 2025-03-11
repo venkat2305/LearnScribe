@@ -1,16 +1,19 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { BookOpen, Plus } from "lucide-react";
+import { BookOpen, FileText, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useQuiz } from "@/hooks/useQuiz";
+import { useSummary } from "@/hooks/useSummary";
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const { quizzes, getMyQuizzes, isLoading } = useQuiz();
+  const { quizzes, getMyQuizzes, isLoading: quizLoading } = useQuiz();
+  const { summaries, getMySummaries, isLoading: summaryLoading } = useSummary();
   
   useEffect(() => {
     getMyQuizzes();
+    getMySummaries();
   }, []);
 
   return (
@@ -29,7 +32,7 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="flex flex-col gap-2">
-              {isLoading ? (
+              {quizLoading ? (
                 <p className="text-muted-foreground">Loading quizzes...</p>
               ) : quizzes && quizzes.length > 0 ? (
                 <div>
@@ -61,10 +64,23 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="flex flex-col gap-2">
-              <p className="text-muted-foreground mb-3">You haven't created any summaries yet</p>
-              <Button onClick={() => navigate("/summary/create")} className="w-full">
-                <Plus className="h-4 w-4 mr-2" /> Create Your First Summary
-              </Button>
+              {summaryLoading ? (
+                <p className="text-muted-foreground">Loading summaries...</p>
+              ) : summaries && summaries.length > 0 ? (
+                <div>
+                  <p className="text-muted-foreground mb-3">You have {summaries.length} summaries</p>
+                  <Button variant="outline" onClick={() => navigate("/summary/mysummaries")} className="w-full">
+                    <FileText className="h-4 w-4 mr-2" /> View All Summaries
+                  </Button>
+                </div>
+              ) : (
+                <div>
+                  <p className="text-muted-foreground mb-3">You haven't created any summaries yet</p>
+                  <Button onClick={() => navigate("/summary/create")} className="w-full">
+                    <Plus className="h-4 w-4 mr-2" /> Create Your First Summary
+                  </Button>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>

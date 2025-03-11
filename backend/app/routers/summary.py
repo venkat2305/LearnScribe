@@ -3,6 +3,7 @@ from pydantic import BaseModel, root_validator
 from enum import Enum
 from typing import Optional
 from datetime import datetime
+from bson import ObjectId
 from app.db.mongodb import get_database
 from app.utils.auth import get_current_user, User
 from app.utils.summary import generate_summary
@@ -58,15 +59,11 @@ async def create_summary(summary_data: SummaryCreate,
 
     # Prepare document for database
     summary_doc = {
+        "summary_id": str(ObjectId()),
         "user_id": current_user.user_id,
-        "summary_id": result.get("summary_id"),
-        "summary": result.get("summary", ""),
-        "source_type": result.get("source_type"),
-        "source_id": result.get("source_id", ""),
-        "source_url": result.get("source_url", ""),
+        **result,
         "created_by": current_user.user_id,
         "created_at": datetime.utcnow(),
-        "metadata": result.get("metadata", {}),
     }
 
     db = get_database()
@@ -77,7 +74,6 @@ async def create_summary(summary_data: SummaryCreate,
     return {
         "message": "Summary created successfully",
         "summary_id": summary_doc["summary_id"],
-        "summary": summary_doc["content"]
     }
 
 
@@ -87,11 +83,10 @@ async def get_all_summaries(current_user: User = Depends(get_current_user)):
     summaries = await db.summaries.find(
         {"created_by": current_user.user_id}, 
         {
-            "_id": 0,  # Exclude _id
+            "_id": 0,
             "summary_id": 1,
-            "summary": 1,
             "source_type": 1,
-            "source_url": 1,
+            "title": 1,
             "created_at": 1
         }
     ).to_list(length=None)

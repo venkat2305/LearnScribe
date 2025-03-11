@@ -2,7 +2,7 @@ from app.services.youtube import get_video_id, get_transcript
 from app.services.article_extraction import get_article_transcript
 from app.services.ai.gemini import generate_quiz_from_text
 import time
-from bson import ObjectId
+import json
 
 GEMINI_FLASH_MODEL = "gemini-2.0-flash"
 GEMINI_1_5_PRO_MODEL = "gemini-1.5-pro"
@@ -11,7 +11,7 @@ GEMINI_1_5_PRO_MODEL = "gemini-1.5-pro"
 def generate_summary_prompt(prompt: str = "", transcript: str = None, length: str = "medium") -> str:
     length_instructions = {
         "short": "Create a concise summary in 2-3 paragraphs.",
-        "medium": "Create a comprehensive summary in 3-5 paragraphs.",
+        "medium": "Create a comprehensive summary in 3-5 paragraphs.", 
         "long": "Create a detailed summary in 5-8 paragraphs."
     }
 
@@ -28,11 +28,30 @@ def generate_summary_prompt(prompt: str = "", transcript: str = None, length: st
     {length_instruction}
     {prompt}
 
+    Please provide the output in the following JSON structure:
+    {{
+        "summary_text": "The main summary text",
+        "title": "A concise title for the summary",
+        "related_questions": [
+            {{
+                "question": "An insightful question about the content",
+                "answer": "The corresponding answer"
+            }},
+            // Include 4 question-answer pairs
+        ]
+    }}
+
     The summary should:
     - Capture the key points and main ideas
     - Be well-structured with clear paragraphs
     - Be written in professional language
     - Maintain the original meaning and important details
+    - Format the summary text in markdown, use headings, side headings, bullets,  lists, and other markdown elements to make the summary more readable.
+
+    The related questions should:
+    - Be thought-provoking and relevant to the main content
+    - Help reinforce key concepts from the summary
+    - Have clear and accurate answers
     """
 
     return summary_prompt
@@ -118,12 +137,23 @@ def generate_summary(summary_data) -> dict:
     else:
         return {"error": "Invalid summary source provided."}
 
+    text = result.get("summary", "")
+
+    # Parse the JSON string and extract the summary
+    try:
+        summary_result = json.loads(text)
+        print(summary_result)
+    except json.JSONDecodeError:
+        # Keep original text if it's not valid JSON
+        pass
+
     if "error" in result:
         return result
 
     return {
-        "summary_id": str(ObjectId()),
-        "summary": result.get("summary", ""),
+        "summary_text": summary_result.get("summary_text", ""),
+        "title": summary_result.get("title", ""),
+        "related_questions": summary_result.get("related_questions", []),
         "source_type": result.get("source_type", ""),
         "source_id": result.get("source_id", ""),
         "source_url": result.get("source_url", source_url),

@@ -142,7 +142,7 @@ export default function SidebarLayout({ children }: SidebarLayoutProps) {
               />
             </SidebarGroup>
             
-            {/* <SidebarGroup icon={<BookOpen size={18} />} label="Summaries" defaultOpen>
+            <SidebarGroup icon={<BookOpen size={18} />} label="Summaries" defaultOpen>
               <SidebarItem
                 icon={<Plus size={18} />}
                 label="Create Summary"
@@ -155,7 +155,7 @@ export default function SidebarLayout({ children }: SidebarLayoutProps) {
                 href="/summary/mysummaries"
                 isActive={isPathActive("/summary/mysummaries")}
               />
-            </SidebarGroup> */}
+            </SidebarGroup>
           </div>
           
           {/* Sidebar footer */}
