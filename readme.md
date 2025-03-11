@@ -1,5 +1,6 @@
 ## TO DO
 High
+- qa, we can manually add questions, generate answers for it and store it in our db. folders for a topic. we can manually add questions and answers as well in a folder. markdown note editor. 
 - 307 Temporary Redirect why are we getting this when we make an api call
 - for manual quiz generation we can use groq.
 - setup backend url in frontend properly, for local and prod.
@@ -10,14 +11,22 @@ High
 - sidebar more maintainable, like we should make it from an array. 
 - we have to make sure the options are difficult. like, it shouldn't be like odd one out, somewhat similar somewhat tricky.
 - and correct choice should be jumbled in order
-- remove quiz topic for yt. check all fields input, remove unnecessary. 
+- remove quiz topic for yt. check all fields input, remove unnecessary.
 - number of questions is wrong in my quizzes page. 
 - handle multiple quiz results for a single quiz if the user attempted multiple times. 
 - add CORS middleware to enable cross-origin requests. needed to send cookies to the server : is this true? 
 - seperate rapid api keys for prod and stage. 
 - change favicon
 - default number of questions, default prompt, etc we can store in settings via redux and store it in users, we can send them with quiz creation request.
-- remove access token from local and put it in memory only. 
+- remove access token from local and put it in memory only.
+- generate strctured notes for all the wrong answered questions for that quiz.
+- llama-3.2-90b-vision-preview use it for images.
+- after sometime, it automatically logging out and if we open `https://learn-scribe-seven.vercel.app/login` directly, we get
+404: NOT_FOUND
+Code: NOT_FOUND
+ID: bom1::78lzm-1741459500931-9941ec04b3bf
+
+but if we open `https://learn-scribe-seven.vercel.app`, it goes to login page(above url only) and then we can login.
 
 Medium
 - we are using different models and hosting providers, we need to have them all at one place for easier maintainability
@@ -28,6 +37,7 @@ Medium
 - for summary, TLDR. lets get various templates.
 - different providers, different model id's, different functions, we have to handle all of these. 
 - re-enable ts checking package.json : // "build": "tsc -b && vite build",
+- create explanations, for wrong answered questions for a quiz or a lot of wrong answered questions in a strcutured way with examples. a proper notes and then be able to generate quiz from it.
 
 Low
 

@@ -44,7 +44,7 @@ const formSchema = z.object({
     url: z.string().url().optional(),
   }).optional(),
   prompt: z.string().min(10, "Prompt must be at least 10 characters").optional(),
-  numberOfQuestions: z.number().int().min(3).max(10).default(5),
+  numberOfQuestions: z.number().int().min(3).max(30).default(5),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -190,25 +190,27 @@ export default function QuizCreator() {
                 />
               )}
 
-              <FormField
-                control={form.control}
-                name="quizTopic"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Quiz Topic (Optional)</FormLabel>
-                    <FormControl>
-                      <Input 
-                        placeholder="e.g., JavaScript Basics, World History, etc." 
-                        {...field} 
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      Specify a topic for your quiz
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              {(sourceType === "manual") && (
+                <FormField
+                  control={form.control}
+                  name="quizTopic"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Quiz Topic (Optional)</FormLabel>
+                      <FormControl>
+                        <Input 
+                          placeholder="e.g., JavaScript Basics, World History, etc." 
+                          {...field} 
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        Specify a topic for your quiz
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
 
               <FormField
                 control={form.control}
@@ -255,12 +257,16 @@ export default function QuizCreator() {
                           <SelectValue placeholder="Select number of questions" />
                         </SelectTrigger>
                       </FormControl>
-                      <SelectContent>
+                        <SelectContent>
                         <SelectItem value="3">3</SelectItem>
                         <SelectItem value="5">5</SelectItem>
                         <SelectItem value="7">7</SelectItem>
                         <SelectItem value="10">10</SelectItem>
-                      </SelectContent>
+                        <SelectItem value="15">15</SelectItem>
+                        <SelectItem value="20">20</SelectItem>
+                        <SelectItem value="25">25</SelectItem>
+                        <SelectItem value="30">30</SelectItem>
+                        </SelectContent>
                     </Select>
                     <FormDescription>
                       Choose how many questions to include in your quiz
@@ -270,28 +276,26 @@ export default function QuizCreator() {
                 )}
               />
 
-              {sourceType === "manual" && (
-                <FormField
-                  control={form.control}
-                  name="prompt"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Prompt</FormLabel>
-                      <FormControl>
-                        <Textarea
-                          placeholder="Describe the quiz content you want to generate..."
-                          className="min-h-32"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        Provide details about the quiz you want to create
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              )}
+              <FormField
+                control={form.control}
+                name="prompt"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Prompt</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="Describe the quiz content you want to generate..."
+                        className="min-h-32"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      Provide details about the quiz you want to create
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
               <div className="flex justify-end">
                 <Button
