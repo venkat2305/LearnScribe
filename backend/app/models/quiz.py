@@ -4,11 +4,11 @@ from typing import Optional, List
 from datetime import datetime
 from app.models.common_schemas import SourceTypes
 
+
 class DifficultyEnum(str, Enum):
     easy = "easy"
     medium = "medium"
     hard = "hard"
-    very_hard = "very_hard"
 
 
 class ContentSource(BaseModel):

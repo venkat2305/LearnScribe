@@ -29,7 +29,6 @@ const DIFFICULTY_LEVELS = {
   EASY: "easy",
   MEDIUM: "medium",
   HARD: "hard",
-  VERY_HARD: "very_hard",
 };
 
 const QUESTION_COUNT_OPTIONS = [3, 5, 7, 10, 15, 20, 25, 30];
@@ -38,7 +37,7 @@ const QUESTION_COUNT_OPTIONS = [3, 5, 7, 10, 15, 20, 25, 30];
 const formSchema = z.object({
   quizSource: z.enum([QUIZ_SOURCES.MANUAL, QUIZ_SOURCES.YOUTUBE, QUIZ_SOURCES.ARTICLE, QUIZ_SOURCES.MISTAKES]),
   quizTopic: z.string().optional(),
-  difficulty: z.enum([DIFFICULTY_LEVELS.EASY, DIFFICULTY_LEVELS.MEDIUM, DIFFICULTY_LEVELS.HARD, DIFFICULTY_LEVELS.VERY_HARD]),
+  difficulty: z.enum([DIFFICULTY_LEVELS.EASY, DIFFICULTY_LEVELS.MEDIUM, DIFFICULTY_LEVELS.HARD]),
   contentSource: z.object({
     url: z.string().url().optional(),
   }).optional(),
@@ -220,7 +219,6 @@ export default function QuizCreator() {
               <SelectItem value={DIFFICULTY_LEVELS.EASY}>Easy</SelectItem>
               <SelectItem value={DIFFICULTY_LEVELS.MEDIUM}>Medium</SelectItem>
               <SelectItem value={DIFFICULTY_LEVELS.HARD}>Hard</SelectItem>
-              <SelectItem value={DIFFICULTY_LEVELS.VERY_HARD}>Very Hard</SelectItem>
             </SelectContent>
           </Select>
           <FormDescription>Choose the difficulty level for your quiz</FormDescription>
