@@ -8,11 +8,17 @@ def groq_client():
     )
 
 
-def generate_quiz_from_text_groq(quiz_prompt, model):
+def generate_quiz_from_text_groq(quiz_prompt, model, response_schema=None):
     client = groq_client()
+
+    schema_dict = response_schema.schema() if response_schema else None
 
     chat_completion = client.chat.completions.create(
         messages=[
+            {
+                "role": "system",
+                "content": f"You must respond with JSON that matches this schema: {schema_dict}" if schema_dict else "Respond with JSON"
+            },
             {
                 "role": "user",
                 "content": quiz_prompt,
@@ -21,7 +27,7 @@ def generate_quiz_from_text_groq(quiz_prompt, model):
         model=model,
         temperature=0.6,
         stream=False,
-        # response_format={"type": "json_object"},
+        response_format={"type": "json_object"},
         stop=None,
         top_p=0.8,
     )

@@ -3,14 +3,20 @@ from app.services.ai.gemini import generate_quiz_from_text, audio_to_json_gemini
 from app.services.ai.groq import generate_quiz_from_text_groq
 from app.services.article_extraction import get_article_transcript
 from app.models.ai_models import Services, SourceTypes, SOURCE_TO_MODEL_MAPPING
+from app.models.quiz import AIQuizResponse
 import json
 import os
 from bson import ObjectId
 import time
 
-# Service-specific generation functions
+
 def generate_with_gemini(prompt, model_id):
-    response = generate_quiz_from_text(prompt, model_id)
+    response = generate_quiz_from_text(
+        prompt=prompt,
+        model_id=model_id,
+        response_schema=AIQuizResponse
+    )
+
     return {
         "text": response.get('text', ''),
         "metadata": {
@@ -21,8 +27,9 @@ def generate_with_gemini(prompt, model_id):
         }
     }
 
+
 def generate_with_groq(prompt, model_id):
-    response = generate_quiz_from_text_groq(prompt, model_id)
+    response = generate_quiz_from_text_groq(prompt, model_id, response_schema=AIQuizResponse)
     return {
         "text": response.get('text', ''),
         "metadata": {
@@ -41,29 +48,7 @@ SERVICE_ROUTER = {
 
 
 def generate_quiz_prompt(quiz_topic: str = "", prompt: str = "", difficulty=None, question_count: int = 5, transcript: str = None) -> str:
-    json_structure = """
-        {
-        "quiz_title": "",
-        "difficulty": "",
-        "category": "",
-        "questions": [
-            {
-                "question_id": "",
-                "question_text": "",
-                "choices": [
-                    {
-                        "choice_id": 0,
-                        "choice_text": "",
-                        "choice_explanation": ""
-                    }
-                ],
-                "correct_choice_id": 0,
-                "answer_explanation": ""
-            }
-        ]
-        }
-    """
-
+    # Remove the JSON structure string since we'll use schema
     if transcript:
         main_text = f"transcript: {transcript}"
     elif quiz_topic:
@@ -73,27 +58,21 @@ def generate_quiz_prompt(quiz_topic: str = "", prompt: str = "", difficulty=None
     difficulty_text = f"difficulty level: {difficulty}" if difficulty else ""
 
     quiz_prompt = f"""
-    Generate a quiz in English as a valid JSON object with exactly the following structure:
-    {json_structure}
-
-    For the quiz:
+    Generate a quiz in JSON format in English with:
     - {main_text}
     - {difficulty_text}
     - {prompt}
-    - Add an appropriate quizTitle based on the provided information
+    - Add an appropriate quiz title based on the provided information
     - Include the specified difficulty
     - Add a relevant category
-    - Create {question_count} questions with unique questionId values
-    - Each question should have 4 choices with choiceId
-    - For each choice, provide an explanation of why it's correct or incorrect in choiceExplanation
-    - Specify the correctChoiceId as the index of the correct answer (0, 1, 2, or 3)
-    - Provide a detailed answerExplanation for each question.
+    - Create {question_count} questions
+    - Each question should have 4 choices
+    - For each choice, provide an explanation of why it's correct or incorrect
+    - Specify which choice is correct
+    - Provide a detailed answer explanation for each question.
     - All text content must be in English.
-
-    The output should be ONLY the JSON object with no additional text.
-    quiz should be a JSON object
+    - Return response in valid JSON format
     """
-
     return quiz_prompt
 
 
@@ -159,68 +138,77 @@ def get_source_content(quiz_source, source_url):
         return get_transcript(source_url), get_video_id(source_url)
     elif quiz_source == SourceTypes.ARTICLE:
         return get_article_transcript(source_url), ""
+    elif quiz_source == SourceTypes.MISTAKES:
+        return "", "practice"
     else:
         return "", ""
 
 
 def generate_quiz(quiz_data) -> dict:
-    # Extract data
     quiz_source = quiz_data.quiz_source
     quiz_topic = quiz_data.quiz_topic or ""
     prompt = quiz_data.prompt or ""
     question_count = quiz_data.number_of_questions
     difficulty = quiz_data.difficulty
     source_url = quiz_data.content_source.url if hasattr(quiz_data, "content_source") and quiz_data.content_source else ""
-    
+
     time1 = time.time()
-    
+
     # Validate inputs
     if quiz_source in [SourceTypes.YOUTUBE, SourceTypes.ARTICLE] and not source_url:
         return {"error": f"{quiz_source.capitalize()} URL is required."}
-    
+
     if quiz_source == SourceTypes.MANUAL and not quiz_topic:
         return {"error": "Quiz topic mandatory for manual quiz."}
-    
+
     # Get source content and ID
     content, source_id = get_source_content(quiz_source, source_url)
-    
+
     # Get the service-model pair for this source type
     model_pair = SOURCE_TO_MODEL_MAPPING.get(quiz_source, SOURCE_TO_MODEL_MAPPING["default"])
     service_name = model_pair.service
     model_id = model_pair.model_id
-    
-    # Generate quiz prompt
-    quiz_prompt = generate_quiz_prompt(
-        quiz_topic, 
-        prompt, 
-        difficulty, 
-        question_count,
-        content if quiz_source != SourceTypes.MANUAL else ""
-    )
-    
+
+    # For mistakes, we'll use the provided prompt directly
+    if quiz_source == SourceTypes.MISTAKES:
+        quiz_prompt = prompt
+    else:
+        # Generate quiz prompt for other sources
+        quiz_prompt = generate_quiz_prompt(
+            quiz_topic,
+            prompt,
+            difficulty,
+            question_count,
+            content if quiz_source != SourceTypes.MANUAL else ""
+        )
+
     # Route to appropriate service
     generator_func = SERVICE_ROUTER.get(service_name)
     if not generator_func:
         return {"error": f"Unsupported service: {service_name}"}
-    
+
     ai_response = generator_func(quiz_prompt, model_id)
     ai_response_text = ai_response["text"]
-    metadata = ai_response["metadata"]
-    
-    # Process response
+
     try:
         cleaned_text = clean_ai_response(ai_response_text)
         quiz = json.loads(cleaned_text)
         quiz = add_ids_to_quiz(quiz)
+    except json.JSONDecodeError as json_err:
+        return {"error": f"AI generation resulted in invalid JSON: {str(json_err)}"}
     except Exception as e:
         return {"error": f"AI generation failed: {str(e)}"}
-    
+
     time2 = time.time()
-    metadata["time_taken"] = time2 - time1
-    metadata["model_id"] = model_id
-    metadata["service"] = service_name
-    metadata["model_description"] = model_pair.description
-    
+    metadata = {
+        "model": ai_response.get('model', ""),
+        "service": service_name,
+        "input_tokens": ai_response.get('input_tokens', 0),
+        "output_tokens": ai_response.get('output_tokens', 0),
+        "time_taken": time2 - time1,
+        "model_id": model_id,
+    }
+
     return {
         "quiz": quiz,
         "quiz_source": quiz_source,

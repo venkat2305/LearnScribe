@@ -1,69 +1,125 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, root_validator
-from enum import Enum
-from typing import Optional, List
 from datetime import datetime
 from bson import ObjectId
 from app.db.mongodb import get_database
 from app.utils.auth import get_current_user, User
 from app.utils.quiz import generate_quiz
+from app.models.common_schemas import SourceTypes
+from app.models.quiz import (
+    QuizCreate,
+    QuizAttemptCreate,
+    Quiz,
+    DifficultyEnum
+)
 import random
 
 router = APIRouter()
-
-
-class DifficultyEnum(str, Enum):
-    easy = "easy"
-    medium = "medium"
-    hard = "hard"
-    very_hard = "very_hard"
-
-
-class QuizSourceEnum(str, Enum):
-    manual = "manual"
-    youtube = "youtube"
-    article = "article"
-
-
-class ContentSource(BaseModel):
-    url: Optional[str] = None
-    # pdfId: Optional[str] = None
-    # ...other possible fields...
-
-
-class QuizCreate(BaseModel):
-    quiz_source: QuizSourceEnum
-    quiz_topic: Optional[str] = None
-    difficulty: DifficultyEnum
-    content_source: Optional[ContentSource] = None
-    prompt: Optional[str] = None
-    number_of_questions: int = 5  # renamed
-
-    @root_validator(pre=True)
-    def check_content_source(cls, values):
-        quiz_source = values.get("quiz_source")  # renamed
-        content_source = values.get("content_source")  # renamed
-        if quiz_source in {"youtube", "article"}:
-            if not (content_source and content_source.get("url")):
-                raise ValueError("ContentSource.url is required for youtube and article quizzes.")
-        return values
-
-
-# New models for quiz attempts
-class AttemptChoice(BaseModel):
-    question_id: str
-    selected_choice_id: str
-
-
-class QuizAttemptCreate(BaseModel):
-    quiz_id: str
-    responses: List[AttemptChoice]
 
 
 @router.post("/", status_code=status.HTTP_201_CREATED)
 async def create_quiz(quiz_data: QuizCreate,
                       current_user: User = Depends(get_current_user)
                       ):
+    # Special handling for mistakes-based practice quiz
+    if quiz_data.quiz_source == SourceTypes.MISTAKES:
+        # Get user's wrong answers using aggregation pipeline
+        db = get_database()
+        pipeline = [
+            {
+                '$match': {
+                    'user_id': current_user.user_id
+                }
+            }, {
+                '$lookup': {
+                    'from': 'quizzes',
+                    'let': {
+                        'quizId': '$quiz_id'
+                    }, 
+                    'pipeline': [
+                        {
+                            '$match': {
+                                '$expr': {
+                                    '$eq': ['$quiz_id', '$$quizId']
+                                }
+                            }
+                        }
+                    ], 
+                    'as': 'quiz'
+                }
+            }, {
+                '$unwind': '$quiz'
+            }, {
+                '$project': {
+                    'responses': {
+                        '$filter': {
+                            'input': '$responses',
+                            'as': 'response',
+                            'cond': {
+                                '$eq': ['$$response.is_correct', False]
+                            }
+                        }
+                    },
+                    'quiz': 1
+                }
+            }
+        ]
+
+        wrong_answers = await db.quiz_attempts.aggregate(pipeline).to_list(length=None)
+
+        if not wrong_answers:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No wrong answers found to create a practice quiz"
+            )
+
+        # Create context for AI from wrong answers
+        mistake_contexts = []
+        for attempt in wrong_answers:
+            quiz = attempt['quiz']
+            for response in attempt['responses']:
+                question = next(
+                    (q for q in quiz['questions'] if q['question_id'] == response['question_id']),
+                    None
+                )
+                if question:
+                    selected_choice = next(
+                        (c for c in question['choices'] if c['choice_id'] == response['selected_choice_id']),
+                        None
+                    )
+                    if selected_choice:
+                        mistake_contexts.append({
+                            'question': question['question_text'],
+                            'selected_answer': selected_choice['choice_text'],
+                            'correct_answer': next(
+                                (c['choice_text'] for c in question['choices'] 
+                                 if c['choice_id'] == question['correct_choice_id']),
+                                None
+                            ),
+                            'explanation': question['answer_explanation']
+                        })
+
+        # Create a practice context for the prompt
+        practice_context = "\n".join([
+            f"Question: {m['question']}\n"
+            f"User's incorrect answer: {m['selected_answer']}\n"
+            f"Correct answer: {m['correct_answer']}\n"
+            f"Explanation: {m['explanation']}\n"
+            for m in mistake_contexts[:5]  # Limit to 5 mistakes for context
+        ])
+
+        # Set quiz topic and prompt for practice quiz
+        quiz_data.quiz_topic = "Practice Quiz Based on Previous Mistakes"
+        quiz_data.prompt = (
+            f"Based on the following user's previous mistakes:\n\n"
+            f"{practice_context}\n\n"
+            f"Generate questions that:\n"
+            f"1. Address similar concepts where the user made mistakes\n"
+            f"2. Include variations of questions they got wrong\n"
+            f"3. Focus on the specific areas of misunderstanding\n"
+            f"4. Provide detailed explanations for correct and incorrect answers"
+        )
+
+    # Continue with normal quiz generation flow
     result = generate_quiz(quiz_data)
     if "error" in result:
         raise HTTPException(status_code=500, detail=result["error"])
@@ -78,15 +134,18 @@ async def create_quiz(quiz_data: QuizCreate,
         }
     quiz_doc = {
         "quiz_id": ai_quiz.get("quiz_id", str(ObjectId())),
-        "quiz_title": ai_quiz.get("quiz_title", "Untitled Quiz"),
+        "quiz_title": ai_quiz.get("quiz_title", "Practice Quiz - Learning from Mistakes") if quiz_data.quiz_source == SourceTypes.MISTAKES else ai_quiz.get("quiz_title", "Untitled Quiz"),
         "difficulty": quiz_data.difficulty,
-        "category": ai_quiz.get("category", ""),
+        "category": ai_quiz.get("category", "Practice") if quiz_data.quiz_source == SourceTypes.MISTAKES else ai_quiz.get("category", ""),
         "quiz_source": result.get("quiz_source"),
         "source_id": result.get("source_id"),
         "created_by": current_user.user_id,
         "created_at": datetime.utcnow(),
         "questions": ai_quiz.get("questions", []),
-        "metadata": result.get("metadata", {}),
+        "metadata": {
+            **result.get("metadata", {}),
+            "is_practice_quiz": quiz_data.quiz_source == SourceTypes.MISTAKES
+        },
     }
 
     db = get_database()
@@ -236,7 +295,7 @@ def process_quiz_responses(quiz, responses):
 
 @router.post("/attempt")
 async def create_quiz_attempt(
-    data: QuizAttemptCreate, 
+    data: QuizAttemptCreate,
     current_user: User = Depends(get_current_user)
 ):
     db = get_database()
@@ -331,3 +390,188 @@ async def get_quiz_attempts(quiz_id: str, current_user: User = Depends(get_curre
     ).to_list(length=None)
 
     return {"attempts": attempts}
+
+
+@router.get("/practice/mistakes", status_code=status.HTTP_200_OK)
+async def get_practice_quiz(current_user: User = Depends(get_current_user)):
+    user_id = current_user.user_id
+    db = get_database()
+    print(user_id)
+    # Get all quiz attempts by the user
+    pipeline = [
+        {
+            '$match': {
+                'user_id': user_id, 
+                'stats.wrong_question_ids': {
+                    '$ne': []
+                }
+            }
+        }, {
+            '$lookup': {
+                'from': 'quizzes', 
+                'let': {
+                    'quizId': '$quiz_id', 
+                    'wrongIds': '$stats.wrong_question_ids', 
+                    'responses': '$responses'
+                }, 
+                'pipeline': [
+                    {
+                        '$match': {
+                            '$expr': {
+                                '$eq': [
+                                    '$quiz_id', '$$quizId'
+                                ]
+                            }
+                        }
+                    }, {
+                        '$project': {
+                            'questions': {
+                                '$filter': {
+                                    'input': '$questions', 
+                                    'as': 'q', 
+                                    'cond': {
+                                        '$in': [
+                                            '$$q.question_id', '$$wrongIds'
+                                        ]
+                                    }
+                                }
+                            }
+                        }
+                    }
+                ], 
+                'as': 'quiz'
+            }
+        }, {
+            '$unwind': '$quiz'
+        }, {
+            '$addFields': {
+                'wrongDetails': {
+                    '$map': {
+                        'input': '$stats.wrong_question_ids', 
+                        'as': 'qid', 
+                        'in': {
+                            '$let': {
+                                'vars': {
+                                    'question': {
+                                        '$arrayElemAt': [
+                                            {
+                                                '$filter': {
+                                                    'input': '$quiz.questions', 
+                                                    'as': 'q', 
+                                                    'cond': {
+                                                        '$eq': [
+                                                            '$$q.question_id', '$$qid'
+                                                        ]
+                                                    }
+                                                }
+                                            }, 0
+                                        ]
+                                    }, 
+                                    'response': {
+                                        '$arrayElemAt': [
+                                            {
+                                                '$filter': {
+                                                    'input': '$responses', 
+                                                    'as': 'r', 
+                                                    'cond': {
+                                                        '$eq': [
+                                                            '$$r.question_id', '$$qid'
+                                                        ]
+                                                    }
+                                                }
+                                            }, 0
+                                        ]
+                                    }
+                                }, 
+                                'in': {
+                                    'question_text': '$$question.question_text', 
+                                    'selected_choice_text': {
+                                        '$arrayElemAt': [
+                                            {
+                                                '$filter': {
+                                                    'input': '$$question.choices', 
+                                                    'as': 'c', 
+                                                    'cond': {
+                                                        '$eq': [
+                                                            '$$c.choice_id', '$$response.selected_choice_id'
+                                                        ]
+                                                    }
+                                                }
+                                            }, 0
+                                        ]
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }, {
+            '$project': {
+                '_id': 0, 
+                'wrongDetails': 1
+            }
+        }
+    ]
+
+    result = await db.quiz_attempts.aggregate(pipeline).to_list(length=None)
+
+    prompt_parts = []
+    for attempt in result:
+        for wrong_detail in attempt.get('wrongDetails', []):
+            if wrong_detail.get('question_text') and wrong_detail.get('selected_choice_text', {}).get('choice_text'):
+                prompt_parts.append(
+                    f"For the question '{wrong_detail['question_text']}', "
+                    f"user selected '{wrong_detail['selected_choice_text']['choice_text']}'."
+                )
+    qa_data = " ".join(prompt_parts)
+
+
+    # print(wrong_answered_questions)
+    # if not wrong_answered_questions:
+    #     raise HTTPException(
+    #         status_code=status.HTTP_404_NOT_FOUND,
+    #         detail="No wrong answers found to create a practice quiz"
+    #     )
+    
+    # # Collect all wrongly answered questions
+    # wrong_questions = []
+    # for attempt in attempts:
+    #     for question in attempt.get("questions", []):
+    #         if question.get("selected_choice_id") != question.get("correct_choice_id"):
+    #             # Add quiz metadata to the question
+    #             quiz = await db.quizzes.find_one({"quiz_id": attempt["quiz_id"]})
+    #             if quiz:
+    #                 question["original_quiz_title"] = quiz.get("quiz_title")
+    #                 question["original_quiz_id"] = quiz.get("quiz_id")
+    #                 wrong_questions.append(question)
+    
+    # if not wrong_questions:
+    #     raise HTTPException(
+    #         status_code=status.HTTP_404_NOT_FOUND,
+    #         detail="No wrong answers found to create a practice quiz"
+    #     )
+    
+    # # Create a new practice quiz from wrong questions
+    # practice_quiz = {
+    #     "quiz_id": str(ObjectId()),
+    #     "quiz_title": "Practice Quiz - Learning from Mistakes",
+    #     "difficulty": "practice",
+    #     "category": "Practice",
+    #     "quiz_source": "practice",
+    #     "source_id": "",
+    #     "created_by": current_user.user_id,
+    #     "created_at": datetime.utcnow(),
+    #     "questions": wrong_questions[:10],  # Limit to 10 questions for better practice experience
+    #     "metadata": {
+    #         "practice_quiz": True,
+    #         "generated_from_mistakes": True
+    #     }
+    # }
+    
+    # # Save the practice quiz
+    # insert_result = await db.quizzes.insert_one(practice_quiz)
+    # if not insert_result.inserted_id:
+    #     raise HTTPException(status_code=500, detail="Unable to create practice quiz.")
+    
+    # return {"message": "Practice quiz created successfully", "quiz_id": practice_quiz["quiz_id"]}

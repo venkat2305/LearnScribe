@@ -2,6 +2,8 @@ from google import genai
 from google.genai import types
 from app.config import config
 import os
+from typing import Optional, Type
+from pydantic import BaseModel
 
 GOOGLE_GEMINI_KEY = config.GOOGLE_GEMINI_KEY
 
@@ -69,31 +71,25 @@ def audio_to_json_gemini(audio_file, prompt, model, question_count):
     }
 
 
-def generate_quiz_from_text(quiz_prompt, model):
-    client = get_gemini_client()
+def generate_quiz_from_text(prompt: str, model_id: str, response_schema: Optional[Type[BaseModel]] = None):
+    client = genai.Client(api_key=GOOGLE_GEMINI_KEY)
+    print("quiz gen gemini")
+    config = {
+        'response_mime_type': 'application/json',
+    }
 
-    contents = [
-        types.Content(
-            role="user",
-            parts=[types.Part.from_text(text=quiz_prompt)]
-        )
-    ]
-    generate_content_config = types.GenerateContentConfig(
-        temperature=0.44,
-        top_p=0.95,
-        top_k=40,
-        max_output_tokens=8192,
-        response_mime_type="application/json",
-    )
+    if response_schema:
+        config['response_schema'] = response_schema
+    print(response_schema)
+
     response = client.models.generate_content(
-        model=model,
-        contents=contents,
-        config=generate_content_config,
+        model=model_id,
+        contents=prompt,
+        config=config
     )
 
     return {
-        "input_tokens": response.usage_metadata.prompt_token_count,
-        "output_tokens": response.usage_metadata.candidates_token_count,
-        "text": response.text,
-        "model": model,
+        'text': response.text,
+        'input_tokens': response.usage_metadata.prompt_token_count,
+        'output_tokens': response.usage_metadata.candidates_token_count,
     }

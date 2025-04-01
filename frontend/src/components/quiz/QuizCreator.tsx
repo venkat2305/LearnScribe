@@ -37,7 +37,7 @@ import {
 } from "@/components/ui/radio-group";
 
 const formSchema = z.object({
-  quizSource: z.enum(["manual", "youtube", "article"]),
+  quizSource: z.enum(["manual", "youtube", "article", "mistakes"]),
   quizTopic: z.string().optional(),
   difficulty: z.enum(["easy", "medium", "hard", "very_hard"]),
   contentSource: z.object({
@@ -71,7 +71,7 @@ const camelToSnakeCase = (obj: Record<string, any>): Record<string, any> => {
 export default function QuizCreator() {
   const navigate = useNavigate();
   const { createNewQuiz, isLoading } = useQuiz();
-  const [sourceType, setSourceType] = useState<"manual" | "youtube" | "article">("manual");
+  const [sourceType, setSourceType] = useState<"manual" | "youtube" | "article" | "mistakes">("manual");
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -100,7 +100,7 @@ export default function QuizCreator() {
     }
   };
 
-  const handleSourceChange = (value: "manual" | "youtube" | "article") => {
+  const handleSourceChange = (value: "manual" | "youtube" | "article" | "mistakes") => {
     setSourceType(value);
     form.setValue("quizSource", value);
     
@@ -128,7 +128,7 @@ export default function QuizCreator() {
                     <FormLabel>Quiz Source</FormLabel>
                     <FormControl>
                       <RadioGroup
-                        onValueChange={(value) => handleSourceChange(value as "manual" | "youtube" | "article")}
+                        onValueChange={(value) => handleSourceChange(value as "manual" | "youtube" | "article" | "mistakes")}
                         defaultValue={field.value}
                         className="flex flex-col space-y-1"
                       >
@@ -154,6 +154,14 @@ export default function QuizCreator() {
                           </FormControl>
                           <FormLabel className="font-normal">
                             Web Article
+                          </FormLabel>
+                        </FormItem>
+                        <FormItem className="flex items-center space-x-3 space-y-0">
+                          <FormControl>
+                            <RadioGroupItem value="mistakes" />
+                          </FormControl>
+                          <FormLabel className="font-normal">
+                            Common Mistakes
                           </FormLabel>
                         </FormItem>
                       </RadioGroup>

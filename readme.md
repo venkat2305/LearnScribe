@@ -1,5 +1,17 @@
+https://www.perplexity.ai/search/i-have-a-website-built-with-re-Q2NlDCwbTtuyRBik4KrEYQ
+
+https://www.perplexity.ai/search/i-have-a-website-built-with-re-wstR.rYnTXK9llFWQLH5mA
+
+https://chatgpt.com/c/67d5454b-42c4-800a-a4a0-4a6d59c68bba
+
 ## TO DO
 High
+- use langchain : https://chat.deepseek.com/a/chat/s/3ce285c6-683c-4830-bb75-8ca4237b27df , https://grok.com/chat/e9284378-9196-4502-83f1-9fbd74f0325f, https://aistudio.google.com/app/prompts/1FOz_Du8Q8jiuq412bknIkT6Cjh8eTCr6?pli=1
+- create a seperate file for putting all the prompts use langchain prompt templates, a file for all langchain services, Pydantic app schemas, 
+- summary prompts for a user, so we can store certain prompts for DSA, notes from transcript. for dsa prompts, we might have to use a better model, we may have to use openrouter for it. this might make the app complicated, so lets use langchain to make 
+- pdf summary.
+- we can add interview questions and answers and read them, we have to create folders, so we can add questions and answers for a particular topic. 
+- similarly we can add sticky notes for a particular topic in a folder, we can revise them easily. we can create a markdown.
 - qa, we can manually add questions, generate answers for it and store it in our db. folders for a topic. we can manually add questions and answers as well in a folder. markdown note editor. 
 - 307 Temporary Redirect why are we getting this when we make an api call
 - for manual quiz generation we can use groq.
@@ -21,12 +33,17 @@ High
 - remove access token from local and put it in memory only.
 - generate strctured notes for all the wrong answered questions for that quiz.
 - llama-3.2-90b-vision-preview use it for images.
+- stores sources url's if provided.
 - after sometime, it automatically logging out and if we open `https://learn-scribe-seven.vercel.app/login` directly, we get
 404: NOT_FOUND
 Code: NOT_FOUND
 ID: bom1::78lzm-1741459500931-9941ec04b3bf
 
 but if we open `https://learn-scribe-seven.vercel.app`, it goes to login page(above url only) and then we can login.
+
+- fix wrong password entering
+- when we refresh a page, it is causing issues. like that page is not loading.
+- for prompt sending while generating quiz, we can add popular snippets like coding outputs, tricky and use it in the prompt.
 
 Medium
 - we are using different models and hosting providers, we need to have them all at one place for easier maintainability
@@ -195,3 +212,18 @@ Replace the wildcard * with explicit frontend origins in your FastAPI CORS confi
 The browser blocks requests when allow_origins is ["*"] and credentials are enabled.
 
 Security Restriction: Browsers block wildcard (*) origins with credentials to prevent cross-origin attacks
+
+
+### Fixing 404 NOT_FOUND Error on Page Reload in Vercel Deployed React App  
+- when we login, and go to a page and refresh that page, an issue occured. 404 not found
+- **Issue:** Reloading a page in the deployed React app on Vercel resulted in a **404 NOT_FOUND** error.  
+- **Cause:** Vercel’s server attempted to fetch a static file for the route (e.g., `/dashboard`), but since React Router handles routing on the client side, no such file existed on the server.  
+- **Solution:** Added a `vercel.json` file with a rewrite rule:  
+  ```json
+  {
+    "rewrites": [
+      { "source": "/(.*)", "destination": "/" }
+    ]
+  }
+  ```  
+- **Why It Worked:** This ensured that all requests were redirected to `index.html`, allowing React Router to handle routing dynamically, preventing the 404 error.

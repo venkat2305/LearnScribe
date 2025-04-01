@@ -1,15 +1,18 @@
+from app.models.common_schemas import SourceTypes
+
+
 class ServiceModelPair:
     def __init__(self, service, model_id, description=""):
         self.service = service
         self.model_id = model_id
         self.description = description
 
-# Available service providers
+
 class Services:
     GEMINI = "gemini"
     GROQ = "groq"
 
-# Define all available service-model pairs
+
 class ModelPairs:
     # Gemini models
     GEMINI_FLASH = ServiceModelPair(Services.GEMINI, "gemini-2.0-flash", "Fast Gemini model")
@@ -22,13 +25,7 @@ class ModelPairs:
     GROQ_LLAMA_3_3 = ServiceModelPair(Services.GROQ, "llama-3.3-70b-versatile", "Powerful Llama 3.3 model")
     GROQ_LLAMA_3_3_SPEC = ServiceModelPair(Services.GROQ, "llama-3.3-70b-specdec", "Specialized Llama 3.3 model")
 
-# Source types
-class SourceTypes:
-    YOUTUBE = "youtube"
-    ARTICLE = "article"
-    MANUAL = "manual"
 
-# Map source types directly to service-model pairs
 SOURCE_TO_MODEL_MAPPING = {
     SourceTypes.YOUTUBE: ModelPairs.GEMINI_FLASH,  # YouTube uses Gemini Flash
     SourceTypes.ARTICLE: ModelPairs.GEMINI_PRO,    # Article uses Gemini Pro
