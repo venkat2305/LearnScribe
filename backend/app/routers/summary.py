@@ -1,20 +1,15 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, root_validator
-from enum import Enum
 from typing import Optional
 from datetime import datetime
 from bson import ObjectId
 from app.db.mongodb import get_database
 from app.utils.auth import get_current_user, User
 from app.utils.summary import generate_summary
+from app.models.common_schemas import SourceTypes
+from enum import Enum
 
 router = APIRouter()
-
-
-class SummarySourceEnum(str, Enum):
-    text = "text"
-    youtube = "youtube"
-    article = "article"
 
 
 class SummaryLengthEnum(str, Enum):
@@ -28,7 +23,7 @@ class ContentSource(BaseModel):
 
 
 class SummaryCreate(BaseModel):
-    summarySource: SummarySourceEnum
+    summarySource: SourceTypes
     contentSource: Optional[ContentSource] = None
     textContent: Optional[str] = None
     prompt: Optional[str] = None
@@ -40,12 +35,13 @@ class SummaryCreate(BaseModel):
         content_source = values.get("contentSource")
         text_content = values.get("textContent")
 
-        if summary_source in {"youtube", "article"}:
+        # Using the SourceTypes enum values
+        if summary_source in {SourceTypes.YOUTUBE, SourceTypes.ARTICLE}:
             if not (content_source and content_source.get("url")):
                 raise ValueError("ContentSource.url is required for youtube and article summaries.")
 
-        if summary_source == "text" and not text_content:
-            raise ValueError("textContent is required when summary source is 'text'.")
+        if summary_source == SourceTypes.MANUAL and not text_content:
+            raise ValueError("textContent is required when summary source is 'manual'.")
 
         return values
 
@@ -56,6 +52,12 @@ async def create_summary(summary_data: SummaryCreate,
     result = generate_summary(summary_data)
     if "error" in result:
         raise HTTPException(status_code=500, detail=result["error"])
+
+    if "related_questions" in result and isinstance(result["related_questions"], list):
+        result["related_questions"] = [
+            q.dict() if hasattr(q, "dict") else q.model_dump() if hasattr(q, "model_dump") else q 
+            for q in result["related_questions"]
+        ]
 
     # Prepare document for database
     summary_doc = {

@@ -45,6 +45,10 @@ but if we open `https://learn-scribe-seven.vercel.app`, it goes to login page(ab
 - when we refresh a page, it is causing issues. like that page is not loading.
 - for prompt sending while generating quiz, we can add popular snippets like coding outputs, tricky and use it in the prompt.
 
+
+- better way to map difficulty level and task configuration name
+- in get source content, we have to implement for mistakes there only, the data. and seperate configuration for it. 
+
 Medium
 - we are using different models and hosting providers, we need to have them all at one place for easier maintainability
 - let's put json structure at a common place to make it reusable

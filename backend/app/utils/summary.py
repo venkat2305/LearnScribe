@@ -1,161 +1,159 @@
+import time
+from bson import ObjectId
 from app.services.youtube import get_video_id, get_transcript
 from app.services.article_extraction import get_article_transcript
-from app.services.ai.gemini import generate_quiz_from_text
-import time
-import json
-
-GEMINI_FLASH_MODEL = "gemini-2.0-flash"
-GEMINI_1_5_PRO_MODEL = "gemini-1.5-pro"
+from app.services.generate_ai_response import generate_response
+from app.models.common_schemas import SourceTypes
 
 
-def generate_summary_prompt(prompt: str = "", transcript: str = None, length: str = "medium") -> str:
-    length_instructions = {
-        "short": "Create a concise summary in 2-3 paragraphs.",
-        "medium": "Create a comprehensive summary in 3-5 paragraphs.", 
-        "long": "Create a detailed summary in 5-8 paragraphs."
-    }
-
-    length_instruction = length_instructions.get(length, length_instructions["medium"])
-
-    if not transcript:
-        return "Please provide text to summarize."
-
-    summary_prompt = f"""
-    Please summarize the following content:
-
-    {transcript}
-
-    {length_instruction}
-    {prompt}
-
-    Please provide the output in the following JSON structure:
-    {{
-        "summary_text": "The main summary text",
-        "title": "A concise title for the summary",
-        "related_questions": [
-            {{
-                "question": "An insightful question about the content",
-                "answer": "The corresponding answer"
-            }},
-            // Include 4 question-answer pairs
-        ]
-    }}
-
-    The summary should:
-    - Capture the key points and main ideas
-    - Be well-structured with clear paragraphs
-    - Be written in professional language
-    - Maintain the original meaning and important details
-    - Format the summary text in markdown, use headings, side headings, bullets,  lists, and other markdown elements to make the summary more readable.
-
-    The related questions should:
-    - Be thought-provoking and relevant to the main content
-    - Help reinforce key concepts from the summary
-    - Have clear and accurate answers
-    """
-
-    return summary_prompt
+def determine_summary_task(summary_source, length):
+    """Determine which task configuration to use based on source and length"""
+    if summary_source == "youtube":
+        if length == "short":
+            return "summary_youtube_short"
+        else:
+            return "summary_youtube_medium"
+    elif summary_source == "article":
+        return "summary_article_medium"
+    else:  # Default for text input
+        if length == "short":
+            return "summary_short"
+        elif length == "long":
+            return "summary_long"
+        else:
+            return "summary_medium"
 
 
-def generate_summary_from_text(text: str, prompt: str = "", length: str = "medium") -> dict:
-    summary_prompt = generate_summary_prompt(prompt, text, length)
+def get_source_content(summary_source, source_url):
+    """Get content to be summarized from the appropriate source"""
+    if summary_source == SourceTypes.YOUTUBE:
+        transcript = get_transcript(source_url)
+        if not transcript:
+            raise ValueError(f"Failed to get transcript for YouTube URL: {source_url}")
+        return transcript, get_video_id(source_url)
+    elif summary_source == SourceTypes.ARTICLE:
+        content = get_article_transcript(source_url)
+        if not content:
+            raise ValueError(f"Failed to extract content from article URL: {source_url}")
+        return content, source_url
+    else:
+        return "", ""
 
-    time1 = time.time()
-    ai_response = generate_quiz_from_text(summary_prompt, GEMINI_FLASH_MODEL)
-    time2 = time.time()
 
-    return {
-        "summary": ai_response.get('text', ''),
-        "metadata": {
-            "model": ai_response.get('model', ""),
-            "service": "gemini",
-            "input_tokens": ai_response.get('input_tokens', 0),
-            "output_tokens": ai_response.get('output_tokens', 0),
-            "time_taken": time2 - time1
+def generate_summary_from_content(source_type, content, prompt="", length="medium", source_url="", source_id=""):
+    """Generate summary from content regardless of source type"""
+    start_time = time.time()
+    
+    task_name = determine_summary_task(source_type, length)
+    additional_instructions = prompt if prompt else ""
+    
+    try:
+        summary_response = generate_response(
+            task=task_name,
+            input_text=content,
+            additional_instructions=additional_instructions
+        )
+        
+        end_time = time.time()
+        
+        # Create metadata
+        metadata = {
+            "time_taken": round(end_time - start_time, 2),
+            "task_used": task_name,
         }
-    }
+        
+        # Add source-specific metadata
+        if source_type == SourceTypes.YOUTUBE:
+            metadata.update({
+                "video_id": source_id,
+                "transcript_length": len(content)
+            })
+        elif source_type == SourceTypes.ARTICLE:
+            metadata.update({
+                "article_url": source_url,
+                "article_length": len(content)
+            })
+        
+        # Set source type
+        if isinstance(summary_response, dict):
+            summary_response.source_type = source_type
+        else:
+            summary_response.source_type = source_type
+            
+        result = {
+            "summary_response": summary_response,
+            "source_type": source_type,
+            "metadata": metadata
+        }
+        
+        # Add source identifiers based on source type
+        if source_type == SourceTypes.YOUTUBE:
+            result["source_id"] = source_id
+        elif source_type == SourceTypes.ARTICLE:
+            result["source_url"] = source_url
+            
+        return result
+        
+    except Exception as e:
+        return {"error": f"Failed to generate summary: {str(e)}"}
 
 
-def generate_summary_from_youtube(url: str, prompt: str = "", length: str = "medium") -> dict:
-    video_id = get_video_id(url)
-    if not video_id:
-        return {"error": "Invalid YouTube URL."}
-
-    transcript = get_transcript(url)
-    if not transcript:
-        return {"error": "Failed to extract transcript from YouTube video."}
-
-    summary_result = generate_summary_from_text(transcript, prompt, length)
-
-    if "error" in summary_result:
-        return summary_result
-
-    summary_result["source_id"] = video_id
-    summary_result["source_type"] = "youtube"
-
-    return summary_result
-
-
-def generate_summary_from_article(url: str, prompt: str = "", length: str = "medium") -> dict:
-    article_text = get_article_transcript(url)
-    if not article_text:
-        return {"error": "Failed to extract content from article URL."}
-
-    summary_result = generate_summary_from_text(article_text, prompt, length)
-
-    if "error" in summary_result:
-        return summary_result
-
-    summary_result["source_type"] = "article"
-    summary_result["source_url"] = url
-    return summary_result
-
-
-def generate_summary(summary_data) -> dict:
+def generate_summary(summary_data):
     summary_source = summary_data.summarySource
     prompt = summary_data.prompt or ""
     source_url = summary_data.contentSource.url if summary_data.contentSource else ""
     text_content = summary_data.textContent if hasattr(summary_data, "textContent") else ""
     length = summary_data.length if hasattr(summary_data, "length") else "medium"
 
-    if summary_source == "youtube":
-        if not source_url:
-            return {"error": "YouTube URL is required."}
-        result = generate_summary_from_youtube(source_url, prompt, length)
-
-    elif summary_source == "article":
-        if not source_url:
-            return {"error": "Article URL is required."}
-        result = generate_summary_from_article(source_url, prompt, length)
-
-    elif summary_source == "text":
-        if not text_content:
-            return {"error": "Text content is required for summarization."}
-        result = generate_summary_from_text(text_content, prompt, length)
-        result["source_type"] = "text"
-
-    else:
-        return {"error": "Invalid summary source provided."}
-
-    text = result.get("summary", "")
-
-    # Parse the JSON string and extract the summary
     try:
-        summary_result = json.loads(text)
-        print(summary_result)
-    except json.JSONDecodeError:
-        # Keep original text if it's not valid JSON
-        pass
+        if summary_source in [SourceTypes.YOUTUBE, SourceTypes.ARTICLE]:
+            if not source_url:
+                return {"error": f"{summary_source.capitalize()} URL is required."}
+            
+            content, source_id = get_source_content(summary_source, source_url)
+            result = generate_summary_from_content(
+                source_type=summary_source,
+                content=content,
+                prompt=prompt,
+                length=length,
+                source_url=source_url,
+                source_id=source_id
+            )
+        elif summary_source == SourceTypes.TEXT:
+            if not text_content:
+                return {"error": "Text content is required for summarization."}
+            
+            result = generate_summary_from_content(
+                source_type=SourceTypes.MANUAL,
+                content=text_content,
+                prompt=prompt,
+                length=length
+            )
+        else:
+            return {"error": f"Invalid summary source provided: {summary_source}"}
+    
+    except ValueError as e:
+        return {"error": str(e)}
+    except Exception as e:
+        return {"error": f"Error generating summary: {str(e)}"}
 
+    # Check for errors in result
     if "error" in result:
         return result
 
-    return {
-        "summary_text": summary_result.get("summary_text", ""),
-        "title": summary_result.get("title", ""),
-        "related_questions": summary_result.get("related_questions", []),
-        "source_type": result.get("source_type", ""),
+    # Process the LLM response
+    summary_response = result.get("summary_response")
+
+    # Create the final result document
+    summary_doc = {
+        "summary_id": str(ObjectId()),
+        "title": getattr(summary_response, "title", "Untitled Summary"),
+        "summary_text": getattr(summary_response, "summary_text", ""),
+        "related_questions": getattr(summary_response, "related_questions", []),
+        "source_type": result.get("source_type"),
         "source_id": result.get("source_id", ""),
         "source_url": result.get("source_url", source_url),
         "metadata": result.get("metadata", {}),
     }
+
+    return summary_doc

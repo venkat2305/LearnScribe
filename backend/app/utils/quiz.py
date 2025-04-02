@@ -133,7 +133,6 @@ def generate_quiz_from_audio(source_url, prompt, question_count):
 
 
 def get_source_content(quiz_source, source_url):
-    """Get content based on source type"""
     if quiz_source == SourceTypes.YOUTUBE:
         return get_transcript(source_url), get_video_id(source_url)
     elif quiz_source == SourceTypes.ARTICLE:

@@ -7,11 +7,31 @@ import { Loader2 } from "lucide-react";
 
 // UI Components
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 
 // Custom hooks
@@ -35,13 +55,27 @@ const QUESTION_COUNT_OPTIONS = [3, 5, 7, 10, 15, 20, 25, 30];
 
 // Zod schema
 const formSchema = z.object({
-  quizSource: z.enum([QUIZ_SOURCES.MANUAL, QUIZ_SOURCES.YOUTUBE, QUIZ_SOURCES.ARTICLE, QUIZ_SOURCES.MISTAKES]),
+  quizSource: z.enum([
+    QUIZ_SOURCES.MANUAL,
+    QUIZ_SOURCES.YOUTUBE,
+    QUIZ_SOURCES.ARTICLE,
+    QUIZ_SOURCES.MISTAKES,
+  ]),
   quizTopic: z.string().optional(),
-  difficulty: z.enum([DIFFICULTY_LEVELS.EASY, DIFFICULTY_LEVELS.MEDIUM, DIFFICULTY_LEVELS.HARD]),
-  contentSource: z.object({
-    url: z.string().url().optional(),
-  }).optional(),
-  prompt: z.string().min(10, "Prompt must be at least 10 characters").optional(),
+  difficulty: z.enum([
+    DIFFICULTY_LEVELS.EASY,
+    DIFFICULTY_LEVELS.MEDIUM,
+    DIFFICULTY_LEVELS.HARD,
+  ]),
+  contentSource: z
+    .object({
+      url: z.string().url().optional(),
+    })
+    .optional(),
+  prompt: z
+    .string()
+    .min(10, "Prompt must be at least 10 characters")
+    .optional(),
   numberOfQuestions: z.number().int().min(3).max(30).default(5),
 });
 
@@ -50,19 +84,23 @@ type FormValues = z.infer<typeof formSchema>;
 // Helper function to convert camelCase to snake_case
 const camelToSnakeCase = (obj: Record<string, any>): Record<string, any> => {
   const result: Record<string, any> = {};
-  
-  Object.keys(obj).forEach(key => {
+
+  Object.keys(obj).forEach((key) => {
     // Convert key from camelCase to snake_case
     const snakeKey = key.replace(/([A-Z])/g, "_$1").toLowerCase();
-    
+
     // Handle nested objects
-    if (obj[key] !== null && typeof obj[key] === 'object' && !Array.isArray(obj[key])) {
+    if (
+      obj[key] !== null &&
+      typeof obj[key] === "object" &&
+      !Array.isArray(obj[key])
+    ) {
       result[snakeKey] = camelToSnakeCase(obj[key]);
     } else {
       result[snakeKey] = obj[key];
     }
   });
-  
+
   return result;
 };
 
@@ -80,23 +118,30 @@ export default function QuizCreator() {
     },
   });
 
-  const handleSourceChange = (value: typeof QUIZ_SOURCES[keyof typeof QUIZ_SOURCES]) => {
+  const handleSourceChange = (
+    value: (typeof QUIZ_SOURCES)[keyof typeof QUIZ_SOURCES]
+  ) => {
     setSourceType(value);
     form.setValue("quizSource", value);
-    
+
     // Reset content source when changing source type
-    form.setValue("contentSource", { url: "" });
+    if (value !== QUIZ_SOURCES.MISTAKES) {
+      form.setValue("contentSource", { url: "" });
+    }
   };
 
   const onSubmit = async (values: FormValues) => {
-    // Transform form values from camelCase to snake_case
     const transformedValues = camelToSnakeCase(values);
-    
-    // Remove contentSource if using manual quiz source and it's empty
-    if (values.quizSource === QUIZ_SOURCES.MANUAL && transformedValues.content_source) {
+
+    // Remove contentSource if using manual or mistakes quiz source and it's empty
+    if (
+      (values.quizSource === QUIZ_SOURCES.MANUAL || 
+       values.quizSource === QUIZ_SOURCES.MISTAKES) &&
+      transformedValues.content_source
+    ) {
       delete transformedValues.content_source;
     }
-    
+
     const quizId = await createNewQuiz(values, transformedValues);
     if (quizId) {
       navigate(`/quiz/${quizId}`);
@@ -117,10 +162,22 @@ export default function QuizCreator() {
               defaultValue={field.value}
               className="flex flex-col space-y-1"
             >
-              <SourceRadioOption value={QUIZ_SOURCES.MANUAL} label="Manual (Create from prompt)" />
-              <SourceRadioOption value={QUIZ_SOURCES.YOUTUBE} label="YouTube Video" />
-              <SourceRadioOption value={QUIZ_SOURCES.ARTICLE} label="Web Article" />
-              <SourceRadioOption value={QUIZ_SOURCES.MISTAKES} label="Common Mistakes" />
+              <SourceRadioOption
+                value={QUIZ_SOURCES.MANUAL}
+                label="Manual (Create from prompt)"
+              />
+              <SourceRadioOption
+                value={QUIZ_SOURCES.YOUTUBE}
+                label="YouTube Video"
+              />
+              <SourceRadioOption
+                value={QUIZ_SOURCES.ARTICLE}
+                label="Web Article"
+              />
+              <SourceRadioOption
+                value={QUIZ_SOURCES.MISTAKES}
+                label="Common Mistakes"
+              />
             </RadioGroup>
           </FormControl>
           <FormMessage />
@@ -128,8 +185,14 @@ export default function QuizCreator() {
       )}
     />
   );
-  
-  const SourceRadioOption = ({ value, label }: { value: string, label: string }) => (
+
+  const SourceRadioOption = ({
+    value,
+    label,
+  }: {
+    value: string;
+    label: string;
+  }) => (
     <FormItem className="flex items-center space-x-3 space-y-0">
       <FormControl>
         <RadioGroupItem value={value} />
@@ -139,12 +202,15 @@ export default function QuizCreator() {
   );
 
   const renderContentSourceField = () => {
-    if (sourceType !== QUIZ_SOURCES.YOUTUBE && sourceType !== QUIZ_SOURCES.ARTICLE) {
+    if (
+      sourceType !== QUIZ_SOURCES.YOUTUBE &&
+      sourceType !== QUIZ_SOURCES.ARTICLE
+    ) {
       return null;
     }
-    
+
     const isYoutube = sourceType === QUIZ_SOURCES.YOUTUBE;
-    
+
     return (
       <FormField
         control={form.control}
@@ -153,16 +219,19 @@ export default function QuizCreator() {
           <FormItem>
             <FormLabel>{isYoutube ? "YouTube URL" : "Article URL"}</FormLabel>
             <FormControl>
-              <Input 
-                placeholder={isYoutube 
-                  ? "https://youtube.com/watch?v=..." 
-                  : "https://example.com/article..."
-                } 
-                {...field} 
+              <Input
+                placeholder={
+                  isYoutube
+                    ? "https://youtube.com/watch?v=..."
+                    : "https://example.com/article..."
+                }
+                {...field}
               />
             </FormControl>
             <FormDescription>
-              Enter the full URL of the {isYoutube ? "YouTube video" : "article"} you want to create a quiz from
+              Enter the full URL of the{" "}
+              {isYoutube ? "YouTube video" : "article"} you want to create a
+              quiz from
             </FormDescription>
             <FormMessage />
           </FormItem>
@@ -175,7 +244,7 @@ export default function QuizCreator() {
     if (sourceType !== QUIZ_SOURCES.MANUAL) {
       return null;
     }
-    
+
     return (
       <FormField
         control={form.control}
@@ -184,14 +253,12 @@ export default function QuizCreator() {
           <FormItem>
             <FormLabel>Quiz Topic (Optional)</FormLabel>
             <FormControl>
-              <Input 
-                placeholder="e.g., JavaScript Basics, World History, etc." 
-                {...field} 
+              <Input
+                placeholder="e.g., JavaScript Basics, World History, etc."
+                {...field}
               />
             </FormControl>
-            <FormDescription>
-              Specify a topic for your quiz
-            </FormDescription>
+            <FormDescription>Specify a topic for your quiz</FormDescription>
             <FormMessage />
           </FormItem>
         )}
@@ -206,10 +273,7 @@ export default function QuizCreator() {
       render={({ field }) => (
         <FormItem>
           <FormLabel>Difficulty Level</FormLabel>
-          <Select 
-            onValueChange={field.onChange} 
-            defaultValue={field.value}
-          >
+          <Select onValueChange={field.onChange} defaultValue={field.value}>
             <FormControl>
               <SelectTrigger>
                 <SelectValue placeholder="Select difficulty" />
@@ -221,7 +285,9 @@ export default function QuizCreator() {
               <SelectItem value={DIFFICULTY_LEVELS.HARD}>Hard</SelectItem>
             </SelectContent>
           </Select>
-          <FormDescription>Choose the difficulty level for your quiz</FormDescription>
+          <FormDescription>
+            Choose the difficulty level for your quiz
+          </FormDescription>
           <FormMessage />
         </FormItem>
       )}
@@ -235,8 +301,8 @@ export default function QuizCreator() {
       render={({ field }) => (
         <FormItem>
           <FormLabel>Number of Questions</FormLabel>
-          <Select 
-            onValueChange={(value) => field.onChange(parseInt(value, 10))} 
+          <Select
+            onValueChange={(value) => field.onChange(parseInt(value, 10))}
             defaultValue={field.value.toString()}
           >
             <FormControl>
@@ -245,12 +311,16 @@ export default function QuizCreator() {
               </SelectTrigger>
             </FormControl>
             <SelectContent>
-              {QUESTION_COUNT_OPTIONS.map(count => (
-                <SelectItem key={count} value={count.toString()}>{count}</SelectItem>
+              {QUESTION_COUNT_OPTIONS.map((count) => (
+                <SelectItem key={count} value={count.toString()}>
+                  {count}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
-          <FormDescription>Choose how many questions to include in your quiz</FormDescription>
+          <FormDescription>
+            Choose how many questions to include in your quiz
+          </FormDescription>
           <FormMessage />
         </FormItem>
       )}
@@ -271,7 +341,9 @@ export default function QuizCreator() {
               {...field}
             />
           </FormControl>
-          <FormDescription>Provide details about the quiz you want to create</FormDescription>
+          <FormDescription>
+            Provide details about the quiz you want to create
+          </FormDescription>
           <FormMessage />
         </FormItem>
       )}
@@ -280,11 +352,7 @@ export default function QuizCreator() {
 
   const renderSubmitButton = () => (
     <div className="flex justify-end">
-      <Button
-        type="submit"
-        disabled={isLoading}
-        className="w-full md:w-auto"
-      >
+      <Button type="submit" disabled={isLoading} className="w-full md:w-auto">
         {isLoading ? (
           <>
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />

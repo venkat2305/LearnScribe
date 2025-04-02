@@ -4,6 +4,7 @@ from app.config import config
 import os
 from typing import Optional, Type
 from pydantic import BaseModel
+import json
 
 GOOGLE_GEMINI_KEY = config.GOOGLE_GEMINI_KEY
 
@@ -73,14 +74,12 @@ def audio_to_json_gemini(audio_file, prompt, model, question_count):
 
 def generate_quiz_from_text(prompt: str, model_id: str, response_schema: Optional[Type[BaseModel]] = None):
     client = genai.Client(api_key=GOOGLE_GEMINI_KEY)
-    print("quiz gen gemini")
     config = {
         'response_mime_type': 'application/json',
     }
-
+    
     if response_schema:
         config['response_schema'] = response_schema
-    print(response_schema)
 
     response = client.models.generate_content(
         model=model_id,

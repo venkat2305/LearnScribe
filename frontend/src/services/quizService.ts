@@ -17,7 +17,7 @@ export const quizService = {
   // Create a new quiz
   createQuiz: async (quizData: any): Promise<{ message: string; quiz_id: string }> => {
     const response = await axiosInstance.post<{ message: string; quiz_id: string }>(
-      "/quiz/",
+      "/quiz/quiz2",
       quizData
     );
     return response.data;

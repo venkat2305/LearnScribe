@@ -6,3 +6,4 @@ class SourceTypes(str, Enum):
     ARTICLE = "article"
     MANUAL = "manual"
     MISTAKES = "mistakes"
+    TEXT = "text"

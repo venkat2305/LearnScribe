@@ -2,7 +2,6 @@ import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useState } from 'react';
-import axios from 'axios';
 import { 
   fetchMyQuizzes, 
   fetchQuizById,

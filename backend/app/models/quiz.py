@@ -16,7 +16,7 @@ class ContentSource(BaseModel):
 
 
 class QuizCreate(BaseModel):
-    quiz_source: SourceTypes  # Updated to use SourceTypes
+    quiz_source: SourceTypes
     quiz_topic: Optional[str] = None
     difficulty: DifficultyEnum
     content_source: Optional[ContentSource] = None
