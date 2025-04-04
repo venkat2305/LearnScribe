@@ -1,11 +1,7 @@
 # app/services/quiz_generator.py (or similar file)
 
 import time
-import json
-import os
-from typing import Dict, Any
 from bson import ObjectId
-from fastapi import HTTPException
 
 from app.models.quiz import QuizCreate, AIQuizResponse
 from app.models.ai_models import SourceTypes
@@ -57,14 +53,6 @@ def get_source_content(quiz_source, source_url):
     else:
         return "", ""
 
-# --- REMOVE OLD HELPER FUNCTIONS ---
-# generate_quiz_prompt
-# generate_with_gemini
-# generate_with_groq
-# SERVICE_ROUTER
-# clean_ai_response
-# generate_quiz_from_audio (unless you plan to re-implement audio input separately)
-# ---
 
 def determine_task_name(quiz_data: QuizCreate, is_mistake_quiz: bool) -> str:
     if is_mistake_quiz:

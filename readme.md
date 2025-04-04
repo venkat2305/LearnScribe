@@ -8,6 +8,7 @@ https://chatgpt.com/c/67d5454b-42c4-800a-a4a0-4a6d59c68bba
 High
 - use langchain : https://chat.deepseek.com/a/chat/s/3ce285c6-683c-4830-bb75-8ca4237b27df , https://grok.com/chat/e9284378-9196-4502-83f1-9fbd74f0325f, https://aistudio.google.com/app/prompts/1FOz_Du8Q8jiuq412bknIkT6Cjh8eTCr6?pli=1
 - create a seperate file for putting all the prompts use langchain prompt templates, a file for all langchain services, Pydantic app schemas, 
+- react scan
 - summary prompts for a user, so we can store certain prompts for DSA, notes from transcript. for dsa prompts, we might have to use a better model, we may have to use openrouter for it. this might make the app complicated, so lets use langchain to make 
 - pdf summary.
 - we can add interview questions and answers and read them, we have to create folders, so we can add questions and answers for a particular topic. 
