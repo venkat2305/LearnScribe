@@ -10,11 +10,14 @@ import {
   Plus,
   Settings,
   X,
+  Sun,
+  Moon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import { useTheme } from "@/components/theme-provider";
 
 interface SidebarItemProps {
   icon: React.ReactNode;
@@ -64,11 +67,22 @@ const SidebarGroup = ({ icon, label, children, defaultOpen = false }: SidebarGro
   );
 };
 
-interface SidebarLayoutProps {
-  children: React.ReactNode;
+function ThemeToggleButton() {
+  const { theme, setTheme } = useTheme();
+  const isDark = theme === "dark" || (theme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+  return (
+    <Button
+      variant="ghost"
+      size="icon"
+      aria-label="Toggle theme"
+      onClick={() => setTheme(isDark ? "light" : "dark")}
+    >
+      {isDark ? <Sun size={18} /> : <Moon size={18} />}
+    </Button>
+  );
 }
 
-export default function SidebarLayout({ children }: SidebarLayoutProps) {
+export default function SidebarLayout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const { logout } = useAuth();
   const location = useLocation();
@@ -108,14 +122,17 @@ export default function SidebarLayout({ children }: SidebarLayoutProps) {
           {/* Sidebar header */}
           <div className="flex items-center justify-between h-16 px-4 border-b border-border">
             <Link to="/dashboard" className="font-bold text-xl">LearnScribe</Link>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="md:hidden"
-              onClick={() => setIsSidebarOpen(false)}
-            >
-              <X size={18} />
-            </Button>
+            <div className="flex items-center gap-2">
+              <ThemeToggleButton />
+              <Button
+                variant="ghost"
+                size="icon"
+                className="md:hidden"
+                onClick={() => setIsSidebarOpen(false)}
+              >
+                <X size={18} />
+              </Button>
+            </div>
           </div>
           
           {/* Sidebar content */}
