@@ -5,6 +5,7 @@ import App from './App.tsx'
 import { Provider } from 'react-redux'
 import { store } from "@/store/store";
 import { ThemeProvider } from './components/theme-provider';
+import { Analytics } from "@vercel/analytics/react"
 
 
 createRoot(document.getElementById('root')!).render(
@@ -12,6 +13,7 @@ createRoot(document.getElementById('root')!).render(
     <ThemeProvider>
       <Provider store={store}>
         <App />
+        <Analytics />
       </Provider>
     </ThemeProvider>
   </StrictMode>,
